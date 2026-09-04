@@ -721,7 +721,7 @@ footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
             <div id="createUserMsg" class="status"></div>
           </div>
 
-          <div class="card" style="width: 100%;">
+          <div class="card" style="width: 100%; margin-bottom: 24px;">
             <h2>Cambiar Mi Contraseña</h2>
             <label for="oldOwnPassword">Contraseña Actual</label>
             <input id="oldOwnPassword" type="password" placeholder="Actual">
@@ -729,6 +729,19 @@ footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
             <input id="newOwnPassword" type="password" placeholder="Mínimo 8 caracteres">
             <button id="changeOwnPasswordBtn" class="btn-outline" type="button" style="width: 100%; margin-top: 18px; border-color: var(--primary); color: var(--primary); font-weight:600;">ACTUALIZAR MI CLAVE</button>
             <div id="ownPasswordMsg" class="status"></div>
+          </div>
+
+          <div class="card" style="width: 100%;">
+            <h2>Actualizar Catastro Minero (KML Mensual)</h2>
+            <p style="font-size: 13px; color: var(--slate-500); margin: 4px 0 14px 0; line-height: 1.4;">
+              Sube el archivo mensual <code>doc.kml</code> para poblar y actualizar los polígonos mineros de la base de datos PostGIS.
+            </p>
+            <label for="kmlFile">Archivo KML (ej. doc.kml)</label>
+            <input id="kmlFile" type="file" accept=".kml,.xml" style="padding: 8px;">
+            <button id="uploadKmlBtn" class="btn-secondary" type="button" style="width: 100%; margin-top: 18px; font-weight: 600;">
+              📁 CARGAR E IMPORTAR KML
+            </button>
+            <div id="uploadKmlMsg" class="status"></div>
           </div>
         </div>
 
@@ -1959,6 +1972,52 @@ async function savePassword() {
   }
 }
 
+async function uploadKML() {
+  const fileInput = document.getElementById('kmlFile');
+  const msgDiv = document.getElementById('uploadKmlMsg');
+  const btn = document.getElementById('uploadKmlBtn');
+
+  if (!fileInput || !fileInput.files.length) {
+    msgDiv.className = 'error';
+    msgDiv.textContent = 'Por favor selecciona un archivo KML (.kml o .xml).';
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+
+  msgDiv.className = 'status';
+  msgDiv.innerHTML = '<span style="color:var(--primary); font-weight:600;">⌛ Procesando e importando polígonos del archivo KML a PostGIS... (Esto puede tomar varios segundos)</span>';
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/admin/upload-kml`, {
+      method: 'POST',
+      headers: {
+        ...(token() ? { Authorization: `Bearer ${token()}` } : {})
+      },
+      body: formData
+    });
+
+    if (btn) btn.disabled = false;
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+      throw new Error(err.detail || 'Error al procesar el archivo KML.');
+    }
+
+    const data = await res.json();
+    msgDiv.className = 'success';
+    msgDiv.textContent = `✓ Importación completada: ${data.poligono_count.toLocaleString()} polígonos mineros actualizados en la base de datos.`;
+    fileInput.value = '';
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    msgDiv.className = 'error';
+    msgDiv.textContent = err.message || 'Error durante la importación del archivo KML.';
+  }
+}
+
 // Mobile Drawer Toggle
 drawerToggle.onclick = () => {
   mapPanel.classList.add('drawer-open');
@@ -2439,6 +2498,7 @@ closeReportModalBtn.onclick = () => reportPreviewModal.style.display = 'none';
 
 createUserBtn.onclick = createUser;
 changeOwnPasswordBtn.onclick = changeOwnPassword;
+uploadKmlBtn.onclick = uploadKML;
 
 cancelPwdBtn.onclick = () => passwordModal.style.display = 'none';
 savePwdBtn.onclick = savePassword;

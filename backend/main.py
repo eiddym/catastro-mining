@@ -3,13 +3,15 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import psycopg2
-from fastapi import Depends, FastAPI, HTTPException, Query, status, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, status, Request, File, UploadFile
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from psycopg2.extras import RealDictCursor
+
+from import_kml import run_import
 
 app = FastAPI(title="Catastro Minero - API Corporativa", version="2.0.0")
 
@@ -392,6 +394,33 @@ def delete_user(user_id: int, admin_user: dict = Depends(require_admin), conn=De
         cursor.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
     conn.commit()
     return {"message": f"Usuario {target['username']} eliminado exitosamente"}
+
+
+@app.post("/api/admin/upload-kml")
+async def upload_kml(
+    file: UploadFile = File(...),
+    _: dict = Depends(require_admin)
+):
+    if not file.filename.lower().endswith(('.kml', '.xml')):
+        raise HTTPException(status_code=400, detail="El archivo debe tener extensión .kml o .xml")
+
+    temp_path = f"/tmp/upload_{uuid.uuid4().hex}_{file.filename}"
+    try:
+        content = await file.read()
+        with open(temp_path, "wb") as f:
+            f.write(content)
+
+        count = run_import(temp_path)
+
+        return {
+            "message": f"Archivo {file.filename} importado exitosamente.",
+            "poligono_count": count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error procesando KML: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 # --- Mining & Geospatial Endpoints ---
