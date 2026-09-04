@@ -825,7 +825,7 @@ footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
     </aside>
     <!-- Overlay HUD: Contador de Zoom & Rosa Náutica Widget -->
     <div class="map-hud">
-      <div id="zoomCounter" class="map-zoom-badge">🔍 Zoom: <strong>5.00</strong> / 18</div>
+      <div id="zoomCounter" class="map-zoom-badge">🔍 Zoom: <strong>5.00</strong> / 16.40</div>
       <div id="rosaNauticaBtn" class="rosa-nautica-widget" title="Rosa Náutica - Orientación al Norte (Clic para orientar al Norte)">
         <svg id="compassNeedle" class="rosa-nautica-needle" viewBox="0 0 100 100">
           <!-- Aguja Norte (Rojo) -->
@@ -1584,10 +1584,10 @@ function exportPDF() {
   doc.save(`Catastro_Minero_Reporte_Agrupado_${Date.now()}.pdf`);
 }
 
-// Neutral Maplibre Setup con restricción de Zoom Máximo (maxZoom: 18)
+// Neutral Maplibre Setup con restricción de Zoom Máximo (maxZoom: 16.40)
 const map = new maplibregl.Map({
   container: 'map',
-  maxZoom: 18,
+  maxZoom: 16.4,
   style: {
     version: 8,
     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -1596,7 +1596,7 @@ const map = new maplibregl.Map({
         type: 'raster',
         tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
         tileSize: 256,
-        maxzoom: 18
+        maxzoom: 16.4
       }
     },
     layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }]
@@ -1613,12 +1613,15 @@ map.addControl(new maplibregl.NavigationControl({
 }), 'top-right');
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-right');
 
-// Actualizador en Tiempo Real del Contador de Zoom y Rosa Náutica (Orientación)
+// Actualizador en Tiempo Real del Contador de Zoom (Límite Máx: 16.40) y Rosa Náutica
 function updateMapHUD() {
-  const z = map.getZoom().toFixed(2);
+  if (map.getZoom() > 16.4) {
+    map.setZoom(16.4);
+  }
+  const z = Math.min(map.getZoom(), 16.4).toFixed(2);
   const zoomCounter = document.getElementById('zoomCounter');
   if (zoomCounter) {
-    zoomCounter.innerHTML = `🔍 Zoom: <strong>${z}</strong> / 18`;
+    zoomCounter.innerHTML = `🔍 Zoom: <strong>${z}</strong> / 16.40`;
   }
   const bearing = map.getBearing();
   const needle = document.getElementById('compassNeedle');
