@@ -1646,10 +1646,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
 map.on('load', () => {
   map.addSource('areas', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-  map.addLayer({ id: 'fill', type: 'fill', source: 'areas', paint: { 'fill-color': '#ea580c', 'fill-opacity': 0.45 } });
-  map.addLayer({ id: 'line', type: 'line', source: 'areas', paint: { 'line-color': '#fde047', 'line-width': 1.5 } });
+
+  // A. Relleno Condicional por Tipo de Área (Data-Driven Fill Color & Opacity)
+  map.addLayer({
+    id: 'areas-fill',
+    type: 'fill',
+    source: 'areas',
+    paint: {
+      'fill-color': [
+        'match',
+        ['get', 'tipo_area'],
+        'Area Restringida', '#1e293b',
+        'Area Inmovilizada', '#1e293b',
+        'Reserva ley 535', '#064e3b',
+        'Reserva Fiscal', '#064e3b',
+        'Tramite Ley 535', '#ea580c',
+        'ATEs Por Pertenencia', '#3b82f6',
+        'ATEs Por Cuadricula', '#0284c7',
+        'Contrato Administrativo Minero por Adecuación', '#8b5cf6',
+        'Contrato Administrativo Minero', '#6366f1',
+        'Contratos Mineros', '#6366f1',
+        'Area Revertida', '#94a3b8',
+        '#eab308'
+      ],
+      'fill-opacity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        5, 0.08,
+        9, 0.18,
+        13, 0.35
+      ]
+    }
+  });
+
+  // B. Delineado Fino y Nítido (Vector Outlines)
+  map.addLayer({
+    id: 'areas-line',
+    type: 'line',
+    source: 'areas',
+    paint: {
+      'line-color': [
+        'match',
+        ['get', 'tipo_area'],
+        'Area Restringida', '#475569',
+        'Area Inmovilizada', '#475569',
+        'Reserva ley 535', '#047857',
+        'Reserva Fiscal', '#047857',
+        'Tramite Ley 535', '#f97316',
+        'ATEs Por Pertenencia', '#60a5fa',
+        'ATEs Por Cuadricula', '#38bdf8',
+        'Contrato Administrativo Minero por Adecuación', '#a78bfa',
+        'Contrato Administrativo Minero', '#818cf8',
+        'Contratos Mineros', '#818cf8',
+        'Area Revertida', '#cbd5e1',
+        '#facc15'
+      ],
+      'line-width': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        5, 0.6,
+        10, 1.2,
+        14, 2.0
+      ],
+      'line-opacity': 0.85
+    }
+  });
   
-  map.on('click', 'fill', async e => {
+  map.on('click', 'areas-fill', async e => {
     const p = e.features[0].properties;
     const areaId = p.id || e.features[0].id;
 
@@ -1679,8 +1744,8 @@ map.on('load', () => {
       .addTo(map);
   });
 
-  map.on('mouseenter', 'fill', () => map.getCanvas().style.cursor = 'pointer');
-  map.on('mouseleave', 'fill', () => map.getCanvas().style.cursor = '');
+  map.on('mouseenter', 'areas-fill', () => map.getCanvas().style.cursor = 'pointer');
+  map.on('mouseleave', 'areas-fill', () => map.getCanvas().style.cursor = '');
 });
 
 // Capas de Referencia con minzoom: 9 en Poblaciones para evitar saturación visual
