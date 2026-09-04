@@ -510,40 +510,63 @@ tr:hover { background: #f8fafc; transition: background-color 0.15s ease; }
 .report-block { margin-bottom: 24px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 .report-block-title { background: #1e293b; color: #ffffff; font-weight: 600; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; display: flex; justify-content: space-between; }
 
-/* Google Earth Popup Styling */
-.mapboxgl-popup-content {
+/* Google Earth Popup Styling (Fino y Pulcro) */
+.maplibregl-popup-content, .mapboxgl-popup-content {
   padding: 0 !important;
-  border-radius: 10px !important;
+  border-radius: 4px !important;
   overflow: hidden !important;
-  box-shadow: 0 16px 36px rgba(0,0,0,0.3) !important;
-  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.35) !important;
+  border: 1px solid #94a3b8 !important;
   font-family: var(--font-sans) !important;
 }
+.maplibregl-popup-close-button, .mapboxgl-popup-close-button {
+  color: #1e293b !important;
+  font-size: 16px !important;
+  padding: 3px 6px !important;
+  z-index: 10 !important;
+  outline: none !important;
+}
 .earth-popup {
-  font-size: 12px;
-  color: var(--slate-900);
+  font-size: 11px;
+  color: #0f172a;
   max-height: 380px;
   overflow-y: auto;
   background: #ffffff;
   min-width: 290px;
-  max-width: 360px;
+  max-width: 320px;
 }
 .earth-popup-header {
-  background: var(--slate-100);
-  color: var(--slate-900);
+  background: #b4c6e7;
+  color: #0f172a;
   font-weight: 700;
-  font-size: 13px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  padding: 6px 12px;
+  text-align: center;
+  border-bottom: 1px solid #94a3b8;
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 5;
 }
-.earth-popup table { width: 100%; border-collapse: collapse; white-space: normal; font-size: 12px; }
-.earth-popup tr:nth-child(even) { background: #f8fafc; }
+.earth-popup table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: normal;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.earth-popup tr:nth-child(even) { background: #dce6f1; }
 .earth-popup tr:nth-child(odd) { background: #ffffff; }
-.earth-popup td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; word-break: break-word; }
-.earth-popup td:first-child { font-weight: 600; color: var(--slate-600); width: 42%; }
+.earth-popup td {
+  padding: 3px 8px;
+  border: 1px solid #cbd5e1;
+  word-break: break-word;
+}
+.earth-popup td:first-child {
+  font-weight: 600;
+  color: #1e293b;
+  width: 38%;
+  background: rgba(0, 0, 0, 0.02);
+}
 
 /* Badges & Spatial Status */
 .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
@@ -1656,16 +1679,18 @@ map.on('load', () => {
       'fill-color': [
         'match',
         ['get', 'tipo_area'],
-        'Area Restringida', '#1e293b',
-        'Area Inmovilizada', '#1e293b',
+        'Area Restringida', '#991b1b',
+        'Area Inmovilizada', '#991b1b',
+        'Area en Zona de Frontera Internacional', '#991b1b',
         'Reserva ley 535', '#064e3b',
         'Reserva Fiscal', '#064e3b',
-        'Tramite Ley 535', '#ea580c',
-        'ATEs Por Pertenencia', '#3b82f6',
-        'ATEs Por Cuadricula', '#0284c7',
-        'Contrato Administrativo Minero por Adecuación', '#8b5cf6',
-        'Contrato Administrativo Minero', '#6366f1',
-        'Contratos Mineros', '#6366f1',
+        'Áreas Administradas - COMIBOL', '#064e3b',
+        'Tramite Ley 535', '#eab308',
+        'ATEs Por Pertenencia', '#eab308',
+        'ATEs Por Cuadricula', '#eab308',
+        'Contrato Administrativo Minero por Adecuación', '#eab308',
+        'Contrato Administrativo Minero', '#eab308',
+        'Contratos Mineros', '#eab308',
         'Area Revertida', '#94a3b8',
         '#eab308'
       ],
@@ -1680,7 +1705,7 @@ map.on('load', () => {
     }
   });
 
-  // B. Delineado Fino y Nítido (Vector Outlines)
+  // B. Delineado Fino y Nítido (Vector Outlines) - Bordes Amarillos / Gold como Google Earth
   map.addLayer({
     id: 'areas-line',
     type: 'line',
@@ -1689,16 +1714,18 @@ map.on('load', () => {
       'line-color': [
         'match',
         ['get', 'tipo_area'],
-        'Area Restringida', '#475569',
-        'Area Inmovilizada', '#475569',
-        'Reserva ley 535', '#047857',
-        'Reserva Fiscal', '#047857',
-        'Tramite Ley 535', '#f97316',
-        'ATEs Por Pertenencia', '#60a5fa',
-        'ATEs Por Cuadricula', '#38bdf8',
-        'Contrato Administrativo Minero por Adecuación', '#a78bfa',
-        'Contrato Administrativo Minero', '#818cf8',
-        'Contratos Mineros', '#818cf8',
+        'Area Restringida', '#ef4444',
+        'Area Inmovilizada', '#ef4444',
+        'Area en Zona de Frontera Internacional', '#ef4444',
+        'Reserva ley 535', '#10b981',
+        'Reserva Fiscal', '#10b981',
+        'Áreas Administradas - COMIBOL', '#10b981',
+        'Tramite Ley 535', '#facc15',
+        'ATEs Por Pertenencia', '#facc15',
+        'ATEs Por Cuadricula', '#facc15',
+        'Contrato Administrativo Minero por Adecuación', '#facc15',
+        'Contrato Administrativo Minero', '#facc15',
+        'Contratos Mineros', '#facc15',
         'Area Revertida', '#cbd5e1',
         '#facc15'
       ],
@@ -1706,42 +1733,76 @@ map.on('load', () => {
         'interpolate',
         ['linear'],
         ['zoom'],
-        5, 0.6,
-        10, 1.2,
-        14, 2.0
+        5, 0.7,
+        10, 1.3,
+        14, 2.2
       ],
-      'line-opacity': 0.85
+      'line-opacity': 0.9
     }
   });
   
   map.on('click', 'areas-fill', async e => {
-    const p = e.features[0].properties;
-    const areaId = p.id || e.features[0].id;
+    if (!e.features || e.features.length === 0) return;
+
+    // Priorizar concesiones mineras específicas sobre macro-áreas (Zona de Frontera / Restringidas)
+    const isMacroZone = f => {
+      const t = (f.properties?.tipo_area || '').toLowerCase();
+      const act = (f.properties?.actor_minero || '').toLowerCase();
+      const area = (f.properties?.area || '').toLowerCase();
+      return t.includes('frontera') || t.includes('restringida') || t.includes('inmovilizada') || t.includes('reserva') || act.includes('frontera') || act.includes('inmovilizacion') || area.includes('frontera');
+    };
+
+    const sortedFeatures = [...e.features].sort((a, b) => {
+      const macroA = isMacroZone(a) ? 1 : 0;
+      const macroB = isMacroZone(b) ? 1 : 0;
+      if (macroA !== macroB) return macroA - macroB;
+
+      const extA = parseFloat(a.properties?.extension) || 9999999;
+      const extB = parseFloat(b.properties?.extension) || 9999999;
+      return extA - extB;
+    });
+
+    const targetFeature = sortedFeatures[0];
+    const p = targetFeature.properties;
+    const areaId = p.id || targetFeature.id;
 
     let actorMineroEsc = p.actor_minero ? esc(p.actor_minero).replace(/'/g, "\\'") : '';
-    let seprecHTML = p.actor_minero ? `<tr><td>SEPREC Oficial</td><td><button onclick="openSeprecModal('${actorMineroEsc}')" class="btn-sm btn-secondary" style="font-size:10px; padding:3px 6px;">🏢 Consultar SEPREC</button></td></tr>` : '';
-    let spatialHTML = `<tr><td>PostGIS Intersects</td><td><button onclick="checkSpatialValidation(${areaId})" class="btn-sm btn-outline" style="font-size:10px;">🔍 Validar Cruce</button></td></tr>` + seprecHTML;
+    let seprecHTML = p.actor_minero ? `<tr><td>SEPREC Oficial</td><td><button tabindex="-1" onclick="openSeprecModal('${actorMineroEsc}')" class="btn-sm btn-secondary" style="font-size:10px; padding:2px 5px;">🏢 Consultar SEPREC</button></td></tr>` : '';
+    let spatialHTML = `<tr><td>PostGIS Intersects</td><td><button tabindex="-1" onclick="checkSpatialValidation(${areaId})" class="btn-sm btn-outline" style="font-size:10px; padding:2px 5px;">🔍 Validar Cruce</button></td></tr>` + seprecHTML;
 
     const tableRows = fields.map(k => `
       <tr>
         <td>${k}</td>
-        <td>${esc(p[k])}</td>
+        <td>${esc(p[k] ?? '')}</td>
       </tr>
     `).join('') + spatialHTML;
+
+    const displayTitle = p.codigo_unico || p.id_registro || p.area || areaId;
 
     const popupHTML = `
       <div class="earth-popup">
         <div class="earth-popup-header">
-          ÁREA MINERA: ${esc(p.codigo_unico || p.area)}
+          ${esc(displayTitle)}
         </div>
         <table>${tableRows}</table>
       </div>
     `;
 
-    new maplibregl.Popup({ maxWidth: '340px' })
+    const popup = new maplibregl.Popup({ maxWidth: '330px', focusAfterOpen: false })
       .setLngLat(e.lngLat)
       .setHTML(popupHTML)
       .addTo(map);
+
+    const resetScroll = () => {
+      const el = popup.getElement();
+      if (el) {
+        const scroller = el.querySelector('.earth-popup');
+        if (scroller) scroller.scrollTop = 0;
+      }
+    };
+    resetScroll();
+    requestAnimationFrame(resetScroll);
+    setTimeout(resetScroll, 50);
   });
 
   map.on('mouseenter', 'areas-fill', () => map.getCanvas().style.cursor = 'pointer');
