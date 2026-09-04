@@ -334,6 +334,58 @@ h1 { margin: 0 0 16px; font-size: 22px; font-weight: 700; color: var(--slate-900
   cursor: pointer;
 }
 
+/* Map HUD - Zoom Counter & Rosa Náutica Overlay */
+.map-hud {
+  position: absolute;
+  bottom: 28px;
+  left: 20px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+.map-zoom-badge {
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  letter-spacing: 0.5px;
+  pointer-events: auto;
+  user-select: none;
+}
+.rosa-nautica-widget {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.2s ease;
+}
+.rosa-nautica-widget:hover {
+  transform: scale(1.08);
+  background: rgba(15, 23, 42, 0.95);
+}
+.rosa-nautica-needle {
+  width: 26px;
+  height: 26px;
+  transition: transform 0.1s linear;
+}
+
 /* Table View & Toolbar */
 #tableView { background: #ffffff; overflow: auto; padding: 28px; }
 .toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
@@ -755,6 +807,25 @@ footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
         <label class="check"><input id="showPopulations" type="checkbox" checked> Poblaciones</label>
       </div>
     </aside>
+    <!-- Overlay HUD: Contador de Zoom & Rosa Náutica Widget -->
+    <div class="map-hud">
+      <div id="zoomCounter" class="map-zoom-badge">🔍 Zoom: <strong>5.00</strong> / 18</div>
+      <div id="rosaNauticaBtn" class="rosa-nautica-widget" title="Rosa Náutica - Orientación al Norte (Clic para orientar al Norte)">
+        <svg id="compassNeedle" class="rosa-nautica-needle" viewBox="0 0 100 100">
+          <!-- Aguja Norte (Rojo) -->
+          <polygon points="50,10 62,50 50,42" fill="#ef4444" />
+          <polygon points="50,10 38,50 50,42" fill="#dc2626" />
+          <!-- Aguja Sur (Blanco) -->
+          <polygon points="50,90 62,50 50,58" fill="#f8fafc" />
+          <polygon points="50,90 38,50 50,58" fill="#cbd5e1" />
+          <!-- Puntos cardinales Este/Oeste -->
+          <polygon points="90,50 50,38 58,50" fill="#94a3b8" />
+          <polygon points="10,50 50,38 42,50" fill="#64748b" />
+          <!-- Anillo Central -->
+          <circle cx="50" cy="50" r="6" fill="#0f172a" stroke="#ffffff" stroke-width="2" />
+        </svg>
+      </div>
+    </div>
     <div id="map"></div>
   </section>
 
@@ -1516,6 +1587,42 @@ const map = new maplibregl.Map({
   },
   center: [-64.0, -16.5],
   zoom: 5
+});
+
+// Agregar Controles Nativos: Rosa Náutica (NavigationControl) y Escala
+map.addControl(new maplibregl.NavigationControl({
+  showCompass: true,
+  showZoom: true,
+  visualizePitch: true
+}), 'top-right');
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-right');
+
+// Actualizador en Tiempo Real del Contador de Zoom y Rosa Náutica (Orientación)
+function updateMapHUD() {
+  const z = map.getZoom().toFixed(2);
+  const zoomCounter = document.getElementById('zoomCounter');
+  if (zoomCounter) {
+    zoomCounter.innerHTML = `🔍 Zoom: <strong>${z}</strong> / 18`;
+  }
+  const bearing = map.getBearing();
+  const needle = document.getElementById('compassNeedle');
+  if (needle) {
+    needle.style.transform = `rotate(${-bearing}deg)`;
+  }
+}
+
+map.on('zoom', updateMapHUD);
+map.on('zoomend', updateMapHUD);
+map.on('rotate', updateMapHUD);
+map.on('move', updateMapHUD);
+map.on('load', updateMapHUD);
+
+// Resetear Norte al presionar el widget de la Rosa Náutica
+document.addEventListener('DOMContentLoaded', () => {
+  const rosaBtn = document.getElementById('rosaNauticaBtn');
+  if (rosaBtn) {
+    rosaBtn.onclick = () => map.resetNorthPitch();
+  }
 });
 
 map.on('load', () => {
