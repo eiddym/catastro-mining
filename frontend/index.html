@@ -1,0 +1,2354 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sistema de Catastro Minero de Bolivia</title>
+
+<!-- Google Fonts: Inter -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- MapLibre GL JS & jsPDF -->
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+:root {
+  /* Enterprise Design System Tokens */
+  --primary: #ea580c;
+  --primary-hover: #c2410c;
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --border-color: #e2e8f0;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  
+  --ink: #0f172a;
+  --muted: #64748b;
+  --paper: #f8fafc;
+  --surface: #ffffff;
+  --accent: #ea580c;
+  --accent-hover: #c2410c;
+  --line: #e2e8f0;
+  --success: #166534;
+  --danger: #dc2626;
+  --header-height: 58px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--slate-900);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  background: var(--paper);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header Navigation */
+header {
+  height: var(--header-height);
+  background: var(--slate-900);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.brand {
+  font: 700 15px var(--font-sans);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand span { color: var(--primary); }
+
+.nav { display: flex; gap: 8px; align-items: center; }
+.nav button, button {
+  border: 1px solid var(--border-color);
+  background: #ffffff;
+  color: var(--slate-700);
+  padding: 8px 16px;
+  cursor: pointer;
+  font: 600 13px var(--font-sans);
+  transition: all 0.15s ease;
+  border-radius: 8px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.nav button {
+  background: transparent;
+  border-color: transparent;
+  color: #94a3b8;
+}
+.nav button:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+.nav button.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+.nav button.active:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+.primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-sm { padding: 6px 12px; font-size: 12px; min-height: 34px; border-radius: 6px; }
+.btn-outline { background: transparent; color: var(--slate-700); border: 1px solid var(--border-color); }
+.btn-outline:hover { background: var(--slate-100); color: var(--slate-900); }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #ffffff; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-secondary { background: #1e293b; border-color: #1e293b; color: #ffffff; }
+.btn-secondary:hover { background: #0f172a; }
+
+/* Layout & Views */
+.layout { flex: 1; position: relative; overflow: hidden; height: calc(100vh - var(--header-height) - 32px); }
+.view { position: absolute; inset: 0; display: none; }
+.view.active-view { display: block; }
+
+/* Rediseño de Login (2 Columnas en Desktop) */
+#loginView {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--slate-900);
+  font-family: var(--font-sans);
+}
+.login-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 56px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%),
+              radial-gradient(circle at 20% 30%, rgba(234, 88, 12, 0.15) 0%, transparent 50%);
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+.login-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+.hero-header { position: relative; z-index: 2; }
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(234, 88, 12, 0.15);
+  border: 1px solid rgba(234, 88, 12, 0.3);
+  border-radius: 20px;
+  color: #ea580c;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.hero-title {
+  font-size: 38px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 24px 0 12px;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+.hero-subtitle {
+  font-size: 16px;
+  color: #94a3b8;
+  max-width: 480px;
+  line-height: 1.5;
+}
+.hero-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+  margin-top: 40px;
+}
+.hero-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 500;
+}
+.hero-feature-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ea580c;
+}
+.hero-footer { position: relative; z-index: 2; color: #64748b; font-size: 13px; }
+
+.login-form-wrapper {
+  width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+.login-card { width: 100%; max-width: 360px; }
+.login-card h2 { margin: 0 0 8px; font-size: 24px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
+.login-card p { margin: 0 0 24px; color: #64748b; font-size: 14px; line-height: 1.4; }
+
+/* Password Toggle Wrapper */
+.pass-wrapper { position: relative; display: flex; align-items: center; }
+.pass-wrapper input { padding-right: 44px; }
+.toggle-eye {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  min-height: auto;
+  color: var(--slate-400);
+}
+.toggle-eye:hover { color: var(--slate-900); background: transparent; }
+
+/* Inputs & Form Controls */
+input, select {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  background: var(--surface);
+  font-family: var(--font-sans);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--slate-900);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15);
+}
+label {
+  display: block;
+  margin: 12px 0 6px;
+  color: var(--slate-600);
+  font: 600 11px var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Panel Admin Initial View */
+#adminView { padding: 32px 24px; overflow-y: auto; background: var(--paper); }
+.admin-container { max-width: 1100px; margin: 0 auto; }
+.admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.admin-header h2 { margin: 0; font-size: 26px; font-weight: 700; color: var(--slate-900); }
+.admin-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
+
+/* Map View & Left Drawer Panel */
+#map { width: 100%; height: 100%; }
+.panel {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  left: 20px;
+  width: min(380px, calc(100vw - 40px));
+  padding: 24px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.92);
+  border-right: 1px solid var(--border-color);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+.eyebrow { margin: 0 0 4px; color: var(--primary); font: 700 11px var(--font-sans); text-transform: uppercase; letter-spacing: 0.8px; }
+h1 { margin: 0 0 16px; font-size: 22px; font-weight: 700; color: var(--slate-900); }
+.range { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.panel-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.status { min-height: 20px; margin-top: 10px; color: var(--slate-500); font-size: 13px; }
+
+/* Mobile Drawer Toggle */
+.drawer-toggle {
+  display: none;
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10;
+  background: var(--slate-900);
+  color: #ffffff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 30px;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+/* Table View & Toolbar */
+#tableView { background: #ffffff; overflow: auto; padding: 28px; }
+.toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.toolbar .search { display: flex; gap: 10px; min-width: min(460px, 100%); }
+.toolbar .search input { max-width: 360px; }
+.toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Metrics Bar (Vista Tabular) */
+.metrics {
+  display: flex;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 20px 0 24px 0;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+.metric {
+  flex: 1;
+  padding: 0 24px;
+  border-right: 1px solid var(--border-color);
+  min-width: 160px;
+  background: transparent;
+  border-left: none;
+}
+.metric:last-child { border-right: none; }
+.metric b { display: block; font-size: 24px; font-weight: 700; color: var(--slate-900); line-height: 1.2; }
+.metric span { font-size: 11px; font-weight: 600; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-top: 2px; }
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  max-height: calc(100vh - 250px);
+  border-radius: 10px;
+  background: #ffffff;
+}
+table { border-collapse: collapse; width: 100%; font-family: var(--font-sans); white-space: nowrap; }
+th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  text-align: left;
+  padding: 12px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+  z-index: 2;
+}
+td { padding: 10px 14px; font-size: 12px; font-weight: 500; color: var(--slate-700); border-bottom: 1px solid #f1f5f9; }
+tr:hover { background: #f8fafc; transition: background-color 0.15s ease; }
+
+/* Modals & Cards */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: rgba(15, 23, 42, 0.6);
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.card {
+  background: var(--surface);
+  padding: 28px;
+  width: min(460px, calc(100vw - 32px));
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+.card-wide { width: min(920px, calc(100vw - 32px)); max-height: 88vh; display: flex; flex-direction: column; }
+.card h2 { margin-top: 0; font-size: 20px; font-weight: 700; color: var(--slate-900); border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+.error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 6px; font-weight: 600; }
+.success { color: var(--success); font-size: 13px; min-height: 18px; margin-top: 6px; font-weight: 600; }
+
+/* Slide-over para SEPREC */
+#seprecModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#seprecModal.open {
+  display: flex;
+  opacity: 1;
+}
+.seprec-slideover-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(640px, 92vw);
+  background: #ffffff;
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.2);
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 121;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+}
+#seprecModal.open .seprec-slideover-panel {
+  transform: translateX(0);
+}
+
+/* Report Preview Printable Block Container */
+.report-scroll { flex: 1; overflow-y: auto; padding: 16px; background: var(--slate-50); border: 1px solid var(--border-color); border-radius: 8px; margin: 16px 0; }
+.report-block { margin-bottom: 24px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.report-block-title { background: #1e293b; color: #ffffff; font-weight: 600; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; display: flex; justify-content: space-between; }
+
+/* Google Earth Popup Styling */
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.3) !important;
+  border: 1px solid var(--border-color) !important;
+  font-family: var(--font-sans) !important;
+}
+.earth-popup {
+  font-size: 12px;
+  color: var(--slate-900);
+  max-height: 380px;
+  overflow-y: auto;
+  background: #ffffff;
+  min-width: 290px;
+  max-width: 360px;
+}
+.earth-popup-header {
+  background: var(--slate-100);
+  color: var(--slate-900);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.earth-popup table { width: 100%; border-collapse: collapse; white-space: normal; font-size: 12px; }
+.earth-popup tr:nth-child(even) { background: #f8fafc; }
+.earth-popup tr:nth-child(odd) { background: #ffffff; }
+.earth-popup td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; word-break: break-word; }
+.earth-popup td:first-child { font-weight: 600; color: var(--slate-600); width: 42%; }
+
+/* Badges & Spatial Status */
+.badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge-admin { background: #e0e7ff; color: #3730a3; }
+.badge-user { background: #f3f4f6; color: #374151; }
+.badge-active { background: #dcfce7; color: #166534; }
+.badge-inactive { background: #fee2e2; color: #991b1b; }
+
+.spatial-valid { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+.spatial-warning { background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+
+.user-grid { width: 100%; font-size: 13px; border-collapse: collapse; background: #ffffff; }
+.user-grid th, .user-grid td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); text-align: left; }
+.action-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Checkboxes */
+.reference { border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 12px; }
+.check { display: inline-flex; align-items: center; gap: 8px; margin: 6px 14px 0 0; text-transform: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--slate-700); }
+.check input { width: auto; min-height: 0; }
+
+/* Footer */
+footer {
+  height: 32px;
+  background: var(--slate-900);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+/* Mobile Breakpoints (< 900px) */
+@media (max-width: 900px) {
+  header { padding: 0 14px; }
+  .brand { font-size: 13px; }
+  .nav button { padding: 6px 10px; font-size: 11px; }
+  .admin-grid { grid-template-columns: 1fr; }
+  
+  .login-hero { display: none; }
+  .login-form-wrapper {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    padding: 20px;
+  }
+  .login-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 32px 24px;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    max-width: 400px;
+  }
+  
+  .panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    z-index: 25;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+  }
+  .panel.drawer-open { transform: translateY(0); }
+  .drawer-toggle { display: block; }
+  #tableView { padding: 16px; }
+  .toolbar .search { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header Navigation (Hidden until authenticated) -->
+<header id="headerNav" style="display:none;">
+  <div class="brand">CATASTRO MINERO <span>BOLIVIA</span></div>
+  <nav class="nav">
+    <button id="adminTabBtn" class="active">PANEL ADMIN</button>
+    <button id="mapTabBtn">MAPA</button>
+    <button id="tableTabBtn">LISTA</button>
+    <button id="logoutBtn" class="btn-outline">CERRAR SESIÓN</button>
+  </nav>
+</header>
+
+<!-- Full-Screen Login Screen (Initial state if not logged in) -->
+<div id="loginView">
+  <!-- Left Hero Panel (Desktop Layout) -->
+  <div class="login-hero">
+    <div class="hero-header">
+      <div class="hero-badge">
+        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--primary);"></span>
+        REPÚBLICA DE BOLIVIA
+      </div>
+      <h1 class="hero-title">Sistema de Catastro Minero</h1>
+      <p class="hero-subtitle">Plataforma empresarial geoespacial para la gestión, consulta y análisis de derechos mineros nacionales.</p>
+    </div>
+
+    <div class="hero-features">
+      <div class="hero-feature-item">
+        <div class="hero-feature-icon">🗺️</div>
+        <span>Motor Espacial PostGIS + MapLibre GL JS</span>
+      </div>
+      <div class="hero-feature-item">
+        <div class="hero-feature-icon">🏢</div>
+        <span>Integración nativa con Registro SEPREC</span>
+      </div>
+      <div class="hero-feature-item">
+        <div class="hero-feature-icon">📄</div>
+        <span>Generación de Informes y Anexos Legales PDF</span>
+      </div>
+    </div>
+
+    <div class="hero-footer">
+      Armotech S.R.L. © <span id="loginYear">2026</span> • Seguridad Corporativa
+    </div>
+  </div>
+
+  <!-- Right Form Container -->
+  <div class="login-form-wrapper">
+    <form id="loginForm" class="login-card">
+      <div style="font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">CATASTRO MINERO</div>
+      <h2>Iniciar Sesión</h2>
+      <p>Ingresa tus credenciales corporativas para acceder al sistema.</p>
+      
+      <label for="loginUser">Usuario</label>
+      <input id="loginUser" value="" autocomplete="username" required placeholder="Nombre de usuario">
+      
+      <label for="loginPass">Contraseña</label>
+      <div class="pass-wrapper">
+        <input id="loginPass" type="password" value="" autocomplete="current-password" required placeholder="Contraseña">
+        <button id="togglePassBtn" type="button" class="toggle-eye" title="Mostrar/ocultar contraseña">👁️</button>
+      </div>
+      
+      <div id="loginError" class="error"></div>
+      <button class="primary" type="submit" style="width:100%; margin-top:20px; height:44px; font-size:14px; font-weight:600;">INICIAR SESIÓN</button>
+    </form>
+  </div>
+</div>
+
+<!-- Main Application Views -->
+<main class="layout">
+
+  <!-- 1. Panel Inicial Administrador View -->
+  <section id="adminView" class="view">
+    <div class="admin-container">
+      <div class="admin-header">
+        <div>
+          <h2>Panel Inicial de Administración</h2>
+          <span style="color: var(--slate-500); font-size: 14px;">Gestión centralizada de usuarios, roles y contraseñas.</span>
+        </div>
+      </div>
+
+      <div class="admin-grid">
+        <div>
+          <div class="card" style="width: 100%; margin-bottom: 24px;">
+            <h2>Crear Nuevo Usuario</h2>
+            <label for="newUser">Usuario</label>
+            <input id="newUser" placeholder="Mínimo 3 caracteres" autocomplete="off">
+            <label for="newPassword">Contraseña</label>
+            <input id="newPassword" type="password" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+            <label for="newRole">Rol Asignado</label>
+            <select id="newRole">
+              <option value="user">user (Operador / Consulta)</option>
+              <option value="admin">admin (Administrador Total)</option>
+            </select>
+            <button id="createUserBtn" class="primary" type="button" style="width: 100%; margin-top: 18px;">CREAR USUARIO</button>
+            <div id="createUserMsg" class="status"></div>
+          </div>
+
+          <div class="card" style="width: 100%;">
+            <h2>Cambiar Mi Contraseña</h2>
+            <label for="oldOwnPassword">Contraseña Actual</label>
+            <input id="oldOwnPassword" type="password" placeholder="Actual">
+            <label for="newOwnPassword">Nueva Contraseña</label>
+            <input id="newOwnPassword" type="password" placeholder="Mínimo 8 caracteres">
+            <button id="changeOwnPasswordBtn" class="btn-outline" type="button" style="width: 100%; margin-top: 18px; border-color: var(--primary); color: var(--primary); font-weight:600;">ACTUALIZAR MI CLAVE</button>
+            <div id="ownPasswordMsg" class="status"></div>
+          </div>
+        </div>
+
+        <div class="card" style="width: 100%;">
+          <h2>Usuarios Registrados en el Sistema</h2>
+          <div style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; margin-top: 16px;">
+            <table class="user-grid">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Usuario</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody">
+                <tr><td colspan="5">Cargando usuarios...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Geospatial Map View -->
+  <section id="mapView" class="view">
+    <button id="drawerToggle" class="drawer-toggle">Filtros Mapa 🔍</button>
+    <aside id="mapPanel" class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <p class="eyebrow" style="margin:0;">Visor geoespacial</p>
+        <button id="closeDrawerBtn" class="btn-outline btn-sm" style="display:none;" type="button">✖ Cerrar</button>
+      </div>
+      <h1>Catastro Minero</h1>
+      
+      <label for="query">Búsqueda libre</label>
+      <input id="query" placeholder="Actor, código, área o padrón">
+      
+      <label for="departmentFilter">Departamento</label>
+      <select id="departmentFilter">
+        <option value="">Todos los Departamentos</option>
+      </select>
+
+      <label for="municipalityFilter">Municipio</label>
+      <select id="municipalityFilter">
+        <option value="">Todos los Municipios</option>
+      </select>
+
+      <label for="unit">Unidad</label>
+      <select id="unit">
+        <option value="">Todas las Unidades</option>
+        <option>CUADRICULA</option>
+        <option>HAS</option>
+        <option>M2</option>
+      </select>
+      
+      <label>Extensión</label>
+      <div class="range">
+        <input id="min" type="number" min="0" placeholder="Mínima">
+        <input id="max" type="number" min="0" placeholder="Máxima">
+      </div>
+      
+      <div class="panel-buttons">
+        <button id="mapSearchBtn" class="primary">BUSCAR ÁREAS</button>
+        <button id="addToListBtn" class="btn-secondary" type="button">➕ AÑADIR A LA LISTA</button>
+        <button id="mapShowAllBtn" class="btn-outline" type="button" onclick="loadAllMiningPolygons()" style="border-color:var(--primary); color:var(--primary); font-weight:bold;">🌐 MOSTRAR TODO</button>
+        <button id="mapSeprecBtn" class="btn-outline" type="button" onclick="openSeprecModal(document.getElementById('query').value)" style="border-color:#1e293b; color:#1e293b; font-weight:bold;">🏢 VERIFICAR EN SEPREC</button>
+        <button id="clearListBtn" class="btn-outline btn-sm" type="button" style="display:none; color:var(--danger); border-color:var(--danger);">🗑️ LIMPIAR LISTA</button>
+      </div>
+      
+      <div id="mapStatus" class="status">Ingresa un término o selecciona un filtro para buscar.</div>
+      <div id="listStatus" class="status" style="font-weight:bold; color:var(--primary);"></div>
+
+      <div class="reference">
+        <label>Capas de referencia</label>
+        <label class="check"><input id="showDepartments" type="checkbox" checked> Departamentos</label>
+        <label class="check"><input id="showMunicipalities" type="checkbox" checked> Municipios</label>
+        <label class="check"><input id="showPopulations" type="checkbox" checked> Poblaciones</label>
+      </div>
+    </aside>
+    <div id="map"></div>
+  </section>
+
+  <!-- 3. Tabular Catalog & PDF Report View -->
+  <section id="tableView" class="view">
+    <div class="toolbar">
+      <div class="search">
+        <input id="tableQuery" placeholder="Actor, código, área o padrón">
+        <button id="tableSearchBtn" class="primary">BUSCAR</button>
+      </div>
+      
+      <div class="toolbar-actions">
+        <button id="addTableToListBtn" class="btn-secondary" type="button">➕ AÑADIR A LA LISTA</button>
+        <!-- <button id="tableShowAllBtn" class="btn-outline" type="button" onclick="loadAllMiningPolygons()" style="border-color:var(--primary); color:var(--primary); font-weight:bold;">🌐 MOSTRAR TODO</button> -->
+        <button id="tableSeprecBtn" class="btn-outline" type="button" onclick="openSeprecModal(document.getElementById('tableQuery').value)" style="border-color:#1e293b; color:#1e293b; font-weight:bold;">🏢 VERIFICAR EN SEPREC</button>
+        <button id="viewReportBtn" class="btn-outline" type="button" style="border-color:var(--primary); color:var(--primary); font-weight:bold;">📄 VER REPORTE</button>
+        <button id="pdfButton" class="primary" type="button">EXPORTAR PDF BLOQUES (13 COLS)</button>
+        <button id="clearTableListBtn" class="btn-outline btn-sm" type="button" style="display:none; color:var(--danger); border-color:var(--danger);">🗑️ LIMPIAR LISTA</button>
+      </div>
+    </div>
+
+    <!-- Barra de Métricas Unificada (KPIs) -->
+    <div class="metrics">
+      <div class="metric"><b id="total">0</b><span>registros en vista</span></div>
+      <div class="metric"><b id="actors">0</b><span>actores mineros</span></div>
+      <div class="metric"><b id="areaTotal">0</b><span>extensión total</span></div>
+      <div class="metric"><b id="accumulatedCount">0 / 10</b><span>bloques acumulados</span></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>1. Cód. Único</th>
+            <th>2. Inscripción</th>
+            <th>3. Regional</th>
+            <th>4. Área</th>
+            <th>5. Tipo Área</th>
+            <th>6. Actividad</th>
+            <th>7. Actor Minero</th>
+            <th>8. Municipio</th>
+            <th>9. Provincia</th>
+            <th>10. Depto</th>
+            <th>11. Certificación</th>
+            <th>12. Solicitud</th>
+            <th>13. Extensión / Unidad</th>
+            <th>PostGIS Valid.</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr>
+            <td colspan="14" style="text-align: center; padding: 48px 24px; background: #ffffff;">
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; max-width: 420px; margin: 0 auto;">
+                <div style="width: 56px; height: 56px; border-radius: 50%; background: #fff7ed; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                </div>
+                <div style="font-size: 15px; font-weight: 600; color: #0f172a;">Sin Concesiones en Vista</div>
+                <div style="font-size: 13px; color: #64748b; text-align: center; line-height: 1.4;">
+                  Ingresa un parámetro de búsqueda en la barra superior o presiona <strong>"🌐 MOSTRAR TODO"</strong> para consultar las concesiones.
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- Footer -->
+<footer>
+  Desarrollado por&nbsp;<strong>Armotech S.R.L.</strong>&nbsp;©&nbsp;<span id="currentYear"></span>
+</footer>
+
+<!-- Change User Password Modal -->
+<div id="passwordModal" class="modal">
+  <div class="card">
+    <h2>Resetear Contraseña</h2>
+    <p id="pwdTargetUser" style="margin-top: 4px; font-weight: bold; color: var(--primary);"></p>
+    <label for="modalNewPassword">Nueva Contraseña</label>
+    <input id="modalNewPassword" type="password" placeholder="Mínimo 8 caracteres">
+    <div id="pwdError" class="error"></div>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+      <button id="cancelPwdBtn" class="btn-outline" type="button">CANCELAR</button>
+      <button id="savePwdBtn" class="primary" type="button" style="margin-top:0;">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- Print Preview Report Modal -->
+<div id="reportPreviewModal" class="modal">
+  <div class="card card-wide">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+      <h2 style="margin:0; border:none; padding:0;">Vista Previa de Reporte Consolidado por Bloques</h2>
+      <button id="closeReportModalBtn" class="btn-outline btn-sm" type="button">✖ CERRAR</button>
+    </div>
+
+    <div id="reportPreviewContent" class="report-scroll">
+      <!-- Generated dynamically block by block -->
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+      <span id="reportMetaInfo" style="font-size:12px; color:var(--slate-500);"></span>
+      <div style="display:flex; gap:8px;">
+        <button id="printReportModalBtn" class="primary" type="button">DESCARGAR INFORME PDF (13 COLS)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Buscador Oficial SEPREC Modal (Slide-Over Panel Lateral) -->
+<div id="seprecModal">
+  <div class="seprec-slideover-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:40px; height:40px; border-radius:8px; background:var(--slate-100); display:flex; align-items:center; justify-content:center; font-size:20px;">🏢</div>
+        <div>
+          <h2 style="margin:0; border:none; padding:0; font-size:18px; font-weight:700; color:var(--slate-900);">Buscador Oficial SEPREC</h2>
+          <span style="font-size:12px; color:var(--slate-500);">Servicio Plurinacional del Registro de Comercio</span>
+        </div>
+      </div>
+      <button id="closeSeprecModalBtn" class="btn-outline btn-sm" type="button">✖ CERRAR</button>
+    </div>
+
+    <form id="seprecForm" style="display:flex; gap:10px; margin-bottom:14px;" onsubmit="event.preventDefault(); triggerSeprecSearch(1);">
+      <input id="seprecInput" type="text" placeholder="Ingresa razón social, nombre de empresa o cooperativa..." style="flex:1;">
+      <button id="seprecSearchBtn" class="primary" type="submit" style="white-space:nowrap; height:42px;">🔍 BUSCAR EN SEPREC</button>
+    </form>
+
+    <div id="seprecStatus" class="status" style="margin-bottom:10px;"></div>
+
+    <div id="seprecResultsScroll" style="flex:1; overflow-y:auto; padding-right:4px; border:1px solid var(--border-color); border-radius:8px; background:var(--slate-50); padding:14px;">
+      <div id="seprecResults" style="display:flex; flex-direction:column; gap:12px;">
+        <div style="text-align:center; padding:30px; color:var(--slate-500);">
+          Ingresa un término de búsqueda para consultar en el Registro de Comercio (SEPREC).
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail View (Maestro-Detalle) -->
+    <div id="seprecDetailView" style="display:none; flex-direction:column; flex:1; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px; background:#ffffff; padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:14px;">
+        <button id="seprecBackToListBtn" class="btn-outline btn-sm" type="button" onclick="showSeprecList()" style="border-color:var(--slate-700); color:var(--slate-700); font-weight:bold;">
+          ⬅ Volver a la lista
+        </button>
+        <span style="font-size:11px; font-weight:bold; color:var(--slate-500);">FICHA COMPLETA SEPREC</span>
+      </div>
+
+      <div id="seprecDetailContent">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <div id="seprecFooter" style="display:none; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:12px; margin-top:14px; font-size:12px;">
+      <span id="seprecPaginationInfo" style="color:var(--slate-600); font-weight:500;"></span>
+      <div style="display:flex; gap:6px;">
+        <button id="seprecPrevBtn" class="btn-outline btn-sm" type="button">◀ Anterior</button>
+        <button id="seprecNextBtn" class="btn-outline btn-sm" type="button">Siguiente ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+const fields = ['fid','id_registro','fk_area_mi','codigo_unico','fecha_inscripcion','regional','area','tipo_area','tipo_actividad','actor_minero','municipio','provincia','departamento','departam_1','provincia_','canton_dec','certificacion','solicitud','extension','unidad','cantidad_t','cantidad_p','cantidad_l','hojas_cartograficas','nombre_hoj','padron','zona_utm'];
+const tableFields = ['codigo_unico','fecha_inscripcion','regional','area','tipo_area','tipo_actividad','actor_minero','municipio','provincia','departamento','certificacion','solicitud','extension','unidad'];
+
+let records = [];
+let accumulatedGroups = []; // Array de bloques acumulados
+let targetUserId = null;
+let allLocations = { departamentos: [], municipios: [] };
+let activeViewName = 'admin';
+
+// Security & Inactivity Session Control (sessionStorage)
+let lastActivityTime = Date.now();
+const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+
+function resetInactivityTimer() {
+  lastActivityTime = Date.now();
+}
+
+window.addEventListener('mousemove', resetInactivityTimer);
+window.addEventListener('keydown', resetInactivityTimer);
+window.addEventListener('click', resetInactivityTimer);
+window.addEventListener('touchstart', resetInactivityTimer);
+
+setInterval(() => {
+  if (token() && (Date.now() - lastActivityTime > INACTIVITY_LIMIT_MS)) {
+    alert('Tu sesión ha expirado por inactividad (15 minutos).');
+    logout();
+  }
+}, 15000);
+
+const token = () => sessionStorage.getItem('access_token');
+const currentUserRole = () => sessionStorage.getItem('role');
+const currentUsername = () => sessionStorage.getItem('username');
+
+const esc = v => String(v ?? '--').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function request(path, options = {}) {
+  options.headers = {
+    ...(options.headers || {}),
+    ...(token() ? { Authorization: `Bearer ${token()}` } : {})
+  };
+  const response = await fetch(API + path, options);
+  if (response.status === 401) {
+    const errData = await response.json().catch(() => ({ detail: 'Sesión expirada o inicio en otro dispositivo' }));
+    alert(errData.detail || 'Sesión inválida o cerrada por inicio en otro dispositivo.');
+    logout();
+    throw new Error(errData.detail);
+  }
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+    throw new Error(errData.detail || `Error HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+function logout() {
+  sessionStorage.removeItem('access_token');
+  sessionStorage.removeItem('role');
+  sessionStorage.removeItem('username');
+  document.getElementById('headerNav').style.display = 'none';
+  document.getElementById('loginView').style.display = 'flex';
+  
+  loginUser.value = '';
+  loginPass.value = '';
+  loginPass.type = 'password';
+  togglePassBtn.textContent = '👁️';
+}
+
+async function checkAuth() {
+  const t = token();
+  if (!t) {
+    logout();
+    return;
+  }
+  try {
+    const me = await request('/auth/me');
+    sessionStorage.setItem('username', me.username);
+    sessionStorage.setItem('role', me.role);
+    
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('headerNav').style.display = 'flex';
+    adminTabBtn.style.display = me.role === 'admin' ? 'inline-block' : 'none';
+    
+    loadLocationDropdowns();
+    
+    if (me.role === 'admin') {
+      switchView('admin');
+    } else {
+      switchView('map');
+    }
+  } catch (e) {
+    logout();
+  }
+}
+
+// Module 1: Password Toggle Eye Button
+togglePassBtn.onclick = () => {
+  if (loginPass.type === 'password') {
+    loginPass.type = 'text';
+    togglePassBtn.textContent = '👁️‍🗨️';
+  } else {
+    loginPass.type = 'password';
+    togglePassBtn.textContent = '👁️';
+  }
+};
+
+async function login(event) {
+  event.preventDefault();
+  loginError.textContent = '';
+  const u = loginUser.value.trim();
+  const p = loginPass.value;
+  if (!u || !p) {
+    loginError.textContent = 'Por favor ingresa usuario y contraseña.';
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Credenciales incorrectas' }));
+      throw new Error(err.detail || 'Credenciales incorrectas');
+    }
+    const session = await res.json();
+    sessionStorage.setItem('access_token', session.access_token);
+    sessionStorage.setItem('role', session.role);
+    sessionStorage.setItem('username', session.username);
+    await checkAuth();
+  } catch (err) {
+    loginError.textContent = err.message || 'Credenciales incorrectas.';
+  }
+}
+
+// Module 2: View Lifecycle & Form Input Clearing
+function switchView(viewName) {
+  if (activeViewName !== viewName) {
+    if (viewName === 'map') {
+      tableQuery.value = '';
+    } else if (viewName === 'table') {
+      query.value = '';
+      departmentFilter.value = '';
+      municipalityFilter.value = '';
+      unit.value = '';
+      min.value = '';
+      max.value = '';
+    }
+  }
+  activeViewName = viewName;
+
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
+  adminTabBtn.classList.toggle('active', viewName === 'admin');
+  mapTabBtn.classList.toggle('active', viewName === 'map');
+  tableTabBtn.classList.toggle('active', viewName === 'table');
+
+  if (viewName === 'admin') {
+    document.getElementById('adminView').classList.add('active-view');
+    loadUsers();
+  } else if (viewName === 'map') {
+    document.getElementById('mapView').classList.add('active-view');
+    map.resize();
+    if (!map.getSource('departments')) loadReferenceLayers();
+  } else if (viewName === 'table') {
+    document.getElementById('tableView').classList.add('active-view');
+  }
+}
+
+// Location Dropdowns
+async function loadLocationDropdowns() {
+  try {
+    allLocations = await request('/reference/locations');
+    departmentFilter.innerHTML = '<option value="">Todos los Departamentos</option>' +
+      allLocations.departamentos.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+    populateMunicipalityDropdown();
+  } catch (e) {
+    console.error('Error cargando ubicaciones:', e);
+  }
+}
+
+function populateMunicipalityDropdown() {
+  const selectedDep = departmentFilter.value;
+  let filtered = allLocations.municipios;
+  if (selectedDep) {
+    filtered = filtered.filter(m => m.departamento === selectedDep);
+  }
+  municipalityFilter.innerHTML = '<option value="">Todos los Municipios</option>' +
+    filtered.map(m => `<option value="${esc(m.municipio)}">${esc(m.municipio)}</option>`).join('');
+}
+
+departmentFilter.onchange = populateMunicipalityDropdown;
+
+// Map Functions & Filters
+function params() {
+  const p = new URLSearchParams(), q = query.value.trim();
+  if (q) p.set('q', q);
+  if (departmentFilter.value) p.set('departamento', departmentFilter.value);
+  if (municipalityFilter.value) p.set('municipio', municipalityFilter.value);
+  if (unit.value) p.set('unidad', unit.value);
+  if (min.value) p.set('min_ext', min.value);
+  if (max.value) p.set('max_ext', max.value);
+  return p;
+}
+
+function buildCriterionText() {
+  const parts = [];
+  if (query.value.trim()) parts.push(`Búsqueda: "${query.value.trim()}"`);
+  if (departmentFilter.value) parts.push(`Depto: ${departmentFilter.value}`);
+  if (municipalityFilter.value) parts.push(`Mun: ${municipalityFilter.value}`);
+  if (unit.value) parts.push(`Unidad: ${unit.value}`);
+  if (min.value || max.value) parts.push(`Extensión: [${min.value || 0} - ${max.value || '∞'}]`);
+  return parts.join(' | ') || 'Filtro General';
+}
+
+async function mapSearchRun() {
+  if (!token()) return;
+  const p = params();
+  if (!p.toString()) {
+    mapStatus.textContent = 'Ingresa un término o selecciona un filtro para buscar.';
+    return;
+  }
+  mapStatus.textContent = 'Consultando catálogo...';
+  try {
+    const data = await request(`/areas?${p}`);
+    map.getSource('areas').setData(data);
+    mapStatus.textContent = `Polígonos encontrados: ${data.features.length}`;
+    if (data.features.length) {
+      const coords = data.features[0].geometry.coordinates[0][0];
+      map.flyTo({ center: Array.isArray(coords[0]) ? coords[0] : coords, zoom: 10 });
+    }
+  } catch {
+    mapStatus.textContent = 'No se pudo consultar el API';
+  }
+}
+
+// Botón "Mostrar Todo": Habilitar todos los polígonos mineros cargados en el mapa
+async function loadAllMiningPolygons() {
+  if (!token()) return;
+  const statusEl = activeViewName === 'map' ? mapStatus : null;
+  if (statusEl) statusEl.textContent = 'Cargando la totalidad de concesiones mineras nacionales...';
+  try {
+    const geoData = await request('/areas?limit=20000');
+    map.getSource('areas').setData(geoData);
+    if (statusEl) statusEl.textContent = `Todos los polígonos cargados: ${geoData.features.length} concesiones.`;
+
+    const tabData = await request('/areas/tabular?limit=20000');
+    renderTabularRecords(tabData);
+
+    const m = await request('/areas/metrics?limit=20000');
+    total.textContent = m.total;
+    actors.textContent = m.actores;
+    areaTotal.textContent = Number(m.extension_total).toLocaleString();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Error al consultar la totalidad de áreas.';
+    alert('No se pudieron cargar todos los polígonos mineros.');
+  }
+}
+
+// Module 3: Carrito de Búsquedas por Bloques (Hasta 10 búsquedas)
+async function addSearchToList() {
+  if (!token()) return;
+  const isMap = activeViewName === 'map';
+  let p, criterionText;
+
+  if (isMap) {
+    p = params();
+    criterionText = buildCriterionText();
+  } else {
+    const q = tableQuery.value.trim();
+    if (!q) {
+      alert('Escribe un término en el buscador de la tabla para acumular.');
+      return;
+    }
+    p = new URLSearchParams({ q });
+    criterionText = `Tabla: "${q}"`;
+  }
+
+  if (!p.toString()) {
+    alert('Selecciona al menos un filtro o escribe un término para acumular.');
+    return;
+  }
+  if (accumulatedGroups.length >= 10) {
+    alert('Has alcanzado el límite máximo de 10 acumulaciones de búsqueda.');
+    return;
+  }
+
+  try {
+    const geoData = await request(`/areas?${p}`);
+    const tabData = await request(`/areas/tabular?${p}&limit=500`);
+
+    if (!tabData.length) {
+      alert('La búsqueda realizada no retornó resultados para acumular.');
+      return;
+    }
+
+    const groupNum = accumulatedGroups.length + 1;
+    const newGroup = {
+      id: groupNum,
+      title: `Búsqueda #${groupNum}`,
+      criterion: criterionText,
+      timestamp: new Date().toLocaleString(),
+      geoFeatures: geoData.features,
+      records: tabData
+    };
+
+    accumulatedGroups.push(newGroup);
+    updateAccumulatedUI();
+  } catch (e) {
+    alert('Error al acumular búsqueda.');
+  }
+}
+
+function updateAccumulatedUI() {
+  const count = accumulatedGroups.length;
+  clearListBtn.style.display = count > 0 ? 'inline-block' : 'none';
+  clearTableListBtn.style.display = count > 0 ? 'inline-block' : 'none';
+  accumulatedCount.textContent = `${count} / 10`;
+
+  const totalAreas = accumulatedGroups.reduce((acc, g) => acc + g.records.length, 0);
+  listStatus.textContent = count > 0 ? `Lista acumulada: ${totalAreas} áreas (${count}/10 búsquedas).` : '';
+
+  const allFeatures = accumulatedGroups.flatMap(g => g.geoFeatures || []);
+  map.getSource('areas').setData({ type: 'FeatureCollection', features: allFeatures });
+
+  if (count > 0) {
+    const allRecords = accumulatedGroups.flatMap(g => g.records);
+    renderTabularRecords(allRecords);
+  }
+}
+
+function clearAccumulatedList() {
+  accumulatedGroups = [];
+  updateAccumulatedUI();
+  mapStatus.textContent = 'Lista acumulada limpiada.';
+  map.getSource('areas').setData({ type: 'FeatureCollection', features: [] });
+  renderTabularRecords([]);
+}
+
+// Tabular Catalog & DataGrid Rendering con Empty State
+async function tableSearchRun() {
+  if (!token()) return;
+  const q = tableQuery.value.trim();
+  if (!q && !accumulatedGroups.length) {
+    renderTabularRecords([]);
+    return;
+  }
+  try {
+    const p = new URLSearchParams(q ? { q } : {});
+    records = await request(`/areas/tabular?${p}&limit=1000`);
+    const m = await request(`/areas/metrics?${p}`);
+    total.textContent = m.total;
+    actors.textContent = m.actores;
+    areaTotal.textContent = Number(m.extension_total).toLocaleString();
+    renderTabularRecords(records);
+  } catch {
+    rows.innerHTML = '<tr><td colspan="14" style="text-align:center; padding:24px; color:var(--danger);">No se pudo consultar el catálogo.</td></tr>';
+  }
+}
+
+function renderTabularRecords(dataRecords) {
+  records = dataRecords;
+  total.textContent = dataRecords.length;
+
+  if (!dataRecords.length) {
+    rows.innerHTML = `
+      <tr>
+        <td colspan="14" style="text-align: center; padding: 48px 24px; background: #ffffff;">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; max-width: 420px; margin: 0 auto;">
+            <div style="width: 56px; height: 56px; border-radius: 50%; background: #fff7ed; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+            <div style="font-size: 15px; font-weight: 600; color: #0f172a;">Sin Concesiones en Vista</div>
+            <div style="font-size: 13px; color: #64748b; text-align: center; line-height: 1.4;">
+              Ingresa un parámetro de búsqueda en la barra superior o presiona <strong>"🌐 MOSTRAR TODO"</strong> para consultar las concesiones.
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  rows.innerHTML = dataRecords.map(r => {
+    const actorEsc = r.actor_minero ? esc(r.actor_minero).replace(/'/g, "\\'") : '';
+    return `
+    <tr>
+      <td>${esc(r.codigo_unico)}</td>
+      <td>${esc(r.fecha_inscripcion)}</td>
+      <td>${esc(r.regional)}</td>
+      <td>${esc(r.area)}</td>
+      <td>${esc(r.tipo_area)}</td>
+      <td>${esc(r.tipo_actividad)}</td>
+      <td>
+        ${esc(r.actor_minero)}
+        ${r.actor_minero ? `<button onclick="openSeprecModal('${actorEsc}')" class="btn-sm btn-outline" style="font-size:10px; padding:1px 6px; margin-left:4px; border-color:#1e293b; color:#1e293b;" title="Verificar ${esc(r.actor_minero)} en SEPREC">🏢</button>` : ''}
+      </td>
+      <td>${esc(r.municipio)}</td>
+      <td>${esc(r.provincia)}</td>
+      <td>${esc(r.departamento)}</td>
+      <td>${esc(r.certificacion)}</td>
+      <td>${esc(r.solicitud)}</td>
+      <td><strong>${esc(r.extension)}</strong> ${esc(r.unidad)}</td>
+      <td>
+        <div style="display:flex; gap:4px;">
+          <button onclick="checkSpatialValidation(${r.id})" class="btn-sm btn-outline" style="font-size:10px;">
+            🔍 Validar
+          </button>
+          ${r.actor_minero ? `<button onclick="openSeprecModal('${actorEsc}')" class="btn-sm btn-secondary" style="font-size:10px; padding:2px 6px;" title="Verificar en SEPREC">🏢 SEPREC</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `;
+  }).join('');
+}
+
+// Module 4: PostGIS Spatial Validation Check
+async function checkSpatialValidation(areaId) {
+  try {
+    const val = await request(`/areas/${areaId}/validacion-espacial`);
+    const matchIcon = val.coincidencia_global ? '✓' : '⚠️';
+    
+    alert(`VALIDACIÓN ESPACIAL POSTGIS (ST_Intersects)\n\n` +
+          `Área: ${val.codigo_unico}\n` +
+          `Depto Declarado: ${val.depto_declarado} | Depto Real PostGIS: ${val.depto_real}\n` +
+          `Municipio Declarado: ${val.mun_declarado} | Municipio Real PostGIS: ${val.mun_real}\n\n` +
+          `Resultado: ${matchIcon} ${val.coincidencia_global ? 'COINCIDENCIA EXACTA' : 'DISCREPANCIA DETECTADA'}`);
+  } catch (err) {
+    alert(`Error consultando validación espacial: ${err.message}`);
+  }
+}
+
+// Module 3: Report Preview Modal & Grouped Block-by-Block PDF
+function openReportPreview() {
+  const groupsToExport = accumulatedGroups.length ? accumulatedGroups : [{
+    id: 1,
+    title: 'Búsqueda Actual',
+    criterion: tableQuery.value.trim() ? `Filtro: "${tableQuery.value.trim()}"` : 'Filtro General',
+    timestamp: new Date().toLocaleString(),
+    records
+  }];
+
+  if (!groupsToExport[0].records.length) {
+    alert('No hay resultados acumulados para generar el reporte.');
+    return;
+  }
+
+  reportPreviewContent.innerHTML = groupsToExport.map(g => `
+    <div class="report-block">
+      <div class="report-block-title">
+        <span>${esc(g.title)}: ${esc(g.criterion)}</span>
+        <span>${g.records.length} áreas</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Cód. Único</th>
+              <th>Inscripción</th>
+              <th>Regional</th>
+              <th>Área</th>
+              <th>Tipo Área</th>
+              <th>Actividad</th>
+              <th>Actor Minero</th>
+              <th>Municipio</th>
+              <th>Provincia</th>
+              <th>Depto</th>
+              <th>Certific.</th>
+              <th>Solicitud</th>
+              <th>Extensión</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${g.records.map(r => `
+              <tr>
+                <td>${esc(r.codigo_unico)}</td>
+                <td>${esc(r.fecha_inscripcion)}</td>
+                <td>${esc(r.regional)}</td>
+                <td>${esc(r.area)}</td>
+                <td>${esc(r.tipo_area)}</td>
+                <td>${esc(r.tipo_actividad)}</td>
+                <td>${esc(r.actor_minero)}</td>
+                <td>${esc(r.municipio)}</td>
+                <td>${esc(r.provincia)}</td>
+                <td>${esc(r.departamento)}</td>
+                <td>${esc(r.certificacion)}</td>
+                <td>${esc(r.solicitud)}</td>
+                <td>${esc(r.extension)} ${esc(r.unidad)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `).join('');
+
+  const totalRegs = groupsToExport.reduce((acc, g) => acc + g.records.length, 0);
+  reportMetaInfo.textContent = `Generado: ${new Date().toLocaleString()} | Bloques: ${groupsToExport.length} | Total áreas: ${totalRegs}`;
+  reportPreviewModal.style.display = 'flex';
+}
+
+function exportPDF() {
+  const groupsToExport = accumulatedGroups.length ? accumulatedGroups : [{
+    id: 1,
+    title: 'Búsqueda Actual',
+    criterion: tableQuery.value.trim() ? `Filtro: "${tableQuery.value.trim()}"` : 'Filtro General',
+    timestamp: new Date().toLocaleString(),
+    records
+  }];
+
+  if (!groupsToExport[0].records.length) {
+    alert('No hay resultados ni búsquedas acumuladas para exportar.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  let currentY = 15;
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INFORME CATASTRAL DE DERECHOS MINEROS (AGRUPADO POR BLOQUES)', 14, currentY);
+  currentY += 6;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generado: ${new Date().toLocaleString()} | Bloques: ${groupsToExport.length} | Empresa: Armotech S.R.L.`, 14, currentY);
+  currentY += 8;
+
+  groupsToExport.forEach((group, index) => {
+    if (currentY > 175) {
+      doc.addPage();
+      currentY = 15;
+    }
+
+    doc.setFillColor(30, 41, 59);
+    doc.rect(14, currentY, 269, 7, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(`${group.title}: ${group.criterion} (${group.records.length} áreas mineras)`, 17, currentY + 5);
+    currentY += 9;
+
+    doc.setTextColor(0, 0, 0);
+    doc.autoTable({
+      head: [['Cód. Único','Inscripción','Regional','Área','Tipo Área','Actividad','Actor Minero','Municipio','Provincia','Depto','Certific.','Solicitud','Extensión']],
+      body: group.records.map(r => [
+        r.codigo_unico ?? '--',
+        r.fecha_inscripcion ?? '--',
+        r.regional ?? '--',
+        r.area ?? '--',
+        r.tipo_area ?? '--',
+        r.tipo_actividad ?? '--',
+        r.actor_minero ?? '--',
+        r.municipio ?? '--',
+        r.provincia ?? '--',
+        r.departamento ?? '--',
+        r.certificacion ?? '--',
+        r.solicitud ?? '--',
+        `${r.extension ?? '--'} ${r.unidad ?? ''}`
+      ]),
+      startY: currentY,
+      styles: { fontSize: 6, cellPadding: 1.2, overflow: 'linebreak' },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+      columnStyles: { 0: { cellWidth: 15 }, 3: { cellWidth: 25 }, 6: { cellWidth: 35 } }
+    });
+
+    currentY = doc.lastAutoTable.finalY + 8;
+  });
+
+  doc.save(`Catastro_Minero_Reporte_Agrupado_${Date.now()}.pdf`);
+}
+
+// Neutral Maplibre Setup con restricción de Zoom Máximo (maxZoom: 18)
+const map = new maplibregl.Map({
+  container: 'map',
+  maxZoom: 18,
+  style: {
+    version: 8,
+    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+    sources: {
+      satellite: {
+        type: 'raster',
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        maxzoom: 18
+      }
+    },
+    layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }]
+  },
+  center: [-64.0, -16.5],
+  zoom: 5
+});
+
+map.on('load', () => {
+  map.addSource('areas', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({ id: 'fill', type: 'fill', source: 'areas', paint: { 'fill-color': '#ea580c', 'fill-opacity': 0.45 } });
+  map.addLayer({ id: 'line', type: 'line', source: 'areas', paint: { 'line-color': '#fde047', 'line-width': 1.5 } });
+  
+  map.on('click', 'fill', async e => {
+    const p = e.features[0].properties;
+    const areaId = p.id || e.features[0].id;
+
+    let actorMineroEsc = p.actor_minero ? esc(p.actor_minero).replace(/'/g, "\\'") : '';
+    let seprecHTML = p.actor_minero ? `<tr><td>SEPREC Oficial</td><td><button onclick="openSeprecModal('${actorMineroEsc}')" class="btn-sm btn-secondary" style="font-size:10px; padding:3px 6px;">🏢 Consultar SEPREC</button></td></tr>` : '';
+    let spatialHTML = `<tr><td>PostGIS Intersects</td><td><button onclick="checkSpatialValidation(${areaId})" class="btn-sm btn-outline" style="font-size:10px;">🔍 Validar Cruce</button></td></tr>` + seprecHTML;
+
+    const tableRows = fields.map(k => `
+      <tr>
+        <td>${k}</td>
+        <td>${esc(p[k])}</td>
+      </tr>
+    `).join('') + spatialHTML;
+
+    const popupHTML = `
+      <div class="earth-popup">
+        <div class="earth-popup-header">
+          ÁREA MINERA: ${esc(p.codigo_unico || p.area)}
+        </div>
+        <table>${tableRows}</table>
+      </div>
+    `;
+
+    new maplibregl.Popup({ maxWidth: '340px' })
+      .setLngLat(e.lngLat)
+      .setHTML(popupHTML)
+      .addTo(map);
+  });
+
+  map.on('mouseenter', 'fill', () => map.getCanvas().style.cursor = 'pointer');
+  map.on('mouseleave', 'fill', () => map.getCanvas().style.cursor = '');
+});
+
+// Capas de Referencia con minzoom: 9 en Poblaciones para evitar saturación visual
+async function loadReferenceLayers() {
+  if (map.getSource('departments')) return;
+  try {
+    const [departments, municipalities, populations] = await Promise.all([
+      request('/capas/departamentos'),
+      request('/capas/municipios'),
+      request('/capas/poblaciones')
+    ]);
+
+    map.addSource('departments', { type: 'geojson', data: departments });
+    map.addLayer({
+      id: 'department-boundaries',
+      type: 'line',
+      source: 'departments',
+      paint: { 'line-color': '#ffffff', 'line-width': 2.2, 'line-dasharray': [3, 2] }
+    });
+    map.addLayer({
+      id: 'department-labels',
+      type: 'symbol',
+      source: 'departments',
+      layout: {
+        'text-field': ['get', 'nombre'],
+        'text-size': 13,
+        'text-transform': 'uppercase',
+        'text-allow-overlap': false
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': '#0f172a',
+        'text-halo-width': 2.5
+      }
+    });
+
+    map.addSource('municipalities', { type: 'geojson', data: municipalities });
+    map.addLayer({
+      id: 'municipality-boundaries',
+      type: 'line',
+      source: 'municipalities',
+      paint: { 'line-color': '#f6d365', 'line-width': 0.8, 'line-opacity': 0.75 }
+    });
+    map.addLayer({
+      id: 'municipality-labels',
+      type: 'symbol',
+      source: 'municipalities',
+      minzoom: 8,
+      layout: {
+        'text-field': ['get', 'nombre'],
+        'text-size': 11,
+        'text-allow-overlap': false
+      },
+      paint: {
+        'text-color': '#fde047',
+        'text-halo-color': '#0f172a',
+        'text-halo-width': 2
+      }
+    });
+
+    map.addSource('populations', { type: 'geojson', data: populations });
+    map.addLayer({
+      id: 'population-points',
+      type: 'circle',
+      source: 'populations',
+      minzoom: 9,
+      paint: {
+        'circle-radius': 4.5,
+        'circle-color': '#38bdf8',
+        'circle-stroke-width': 1.2,
+        'circle-stroke-color': '#0f172a'
+      }
+    });
+    map.addLayer({
+      id: 'population-labels',
+      type: 'symbol',
+      source: 'populations',
+      minzoom: 9,
+      layout: {
+        'text-field': ['get', 'nombre'],
+        'text-size': 11,
+        'text-offset': [0, 1.1],
+        'text-anchor': 'top',
+        'text-allow-overlap': false
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': '#0f172a',
+        'text-halo-width': 2
+      }
+    });
+
+    map.on('click', 'population-points', e => {
+      const p = e.features[0].properties;
+      const popupHTML = `
+        <div class="earth-popup">
+          <div class="earth-popup-header">POBLACIÓN / COMUNIDAD</div>
+          <table>
+            <tr><td>Nombre</td><td><b>${esc(p.nombre)}</b></td></tr>
+            <tr><td>Tipo</td><td>${esc(p.tipo || 'Población')}</td></tr>
+            <tr><td>Municipio</td><td>${esc(p.municipio)}</td></tr>
+            <tr><td>Departamento</td><td>${esc(p.departamento)}</td></tr>
+            <tr><td>Habitantes</td><td>${p.poblacion ? Number(p.poblacion).toLocaleString() + ' hab.' : 'Sin datos'}</td></tr>
+          </table>
+        </div>
+      `;
+      new maplibregl.Popup({ maxWidth: '320px' })
+        .setLngLat(e.lngLat)
+        .setHTML(popupHTML)
+        .addTo(map);
+    });
+    map.on('mouseenter', 'population-points', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseleave', 'population-points', () => map.getCanvas().style.cursor = '');
+
+  } catch (error) {
+    console.error('No se pudieron cargar las capas de referencia', error);
+  }
+}
+
+function toggleLayer(layerId, visible) {
+  if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+}
+
+showDepartments.onchange = () => {
+  toggleLayer('department-boundaries', showDepartments.checked);
+  toggleLayer('department-labels', showDepartments.checked);
+};
+showMunicipalities.onchange = () => {
+  toggleLayer('municipality-boundaries', showMunicipalities.checked);
+  toggleLayer('municipality-labels', showMunicipalities.checked);
+};
+showPopulations.onchange = () => {
+  toggleLayer('population-points', showPopulations.checked);
+  toggleLayer('population-labels', showPopulations.checked);
+};
+
+// Admin User Management
+async function loadUsers() {
+  try {
+    const users = await request('/admin/users');
+    const myName = currentUsername();
+    userTableBody.innerHTML = users.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td><strong>${esc(u.username)}</strong> ${u.username === myName ? '(Tú)' : ''}</td>
+        <td>
+          <select onchange="changeUserRole(${u.id}, this.value)" class="btn-sm btn-outline">
+            <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
+            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+          </select>
+        </td>
+        <td>
+          <span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">
+            ${u.is_active ? 'ACTIVO' : 'INACTIVO'}
+          </span>
+        </td>
+        <td>
+          <div class="action-group">
+            <button onclick="toggleUserStatus(${u.id}, ${!u.is_active})" class="btn-sm btn-outline" ${u.username === myName ? 'disabled' : ''}>
+              ${u.is_active ? 'Desactivar' : 'Activar'}
+            </button>
+            <button onclick="promptPasswordModal(${u.id}, '${esc(u.username)}')" class="btn-sm btn-outline">
+              Clave
+            </button>
+            <button onclick="deleteUser(${u.id}, '${esc(u.username)}')" class="btn-sm btn-danger" ${u.username === myName ? 'disabled' : ''}>
+              Borrar
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="5">No existen usuarios.</td></tr>';
+  } catch (err) {
+    userTableBody.innerHTML = `<tr><td colspan="5" class="error">${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function createUser() {
+  createUserMsg.className = 'status';
+  createUserMsg.textContent = '';
+  const u = newUser.value.trim();
+  const p = newPassword.value;
+  const r = newRole.value;
+  if (!u || !p) {
+    createUserMsg.className = 'error';
+    createUserMsg.textContent = 'El usuario y la contraseña son requeridos.';
+    return;
+  }
+  try {
+    await request('/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p, role: r })
+    });
+    newUser.value = '';
+    newPassword.value = '';
+    createUserMsg.className = 'success';
+    createUserMsg.textContent = `Usuario ${u} creado exitosamente.`;
+    await loadUsers();
+  } catch (err) {
+    createUserMsg.className = 'error';
+    createUserMsg.textContent = err.message || 'No se pudo crear el usuario.';
+  }
+}
+
+async function changeOwnPassword() {
+  ownPasswordMsg.className = 'status';
+  ownPasswordMsg.textContent = '';
+  const oldP = oldOwnPassword.value;
+  const newP = newOwnPassword.value;
+  if (!oldP || !newP) {
+    ownPasswordMsg.className = 'error';
+    ownPasswordMsg.textContent = 'Ambas contraseñas son requeridas.';
+    return;
+  }
+  try {
+    await request('/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ old_password: oldP, new_password: newP })
+    });
+    oldOwnPassword.value = '';
+    newOwnPassword.value = '';
+    ownPasswordMsg.className = 'success';
+    ownPasswordMsg.textContent = 'Tu contraseña ha sido actualizada correctamente.';
+  } catch (err) {
+    ownPasswordMsg.className = 'error';
+    ownPasswordMsg.textContent = err.message || 'Error al actualizar contraseña.';
+  }
+}
+
+async function changeUserRole(id, role) {
+  try {
+    await request(`/admin/users/${id}/role`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role })
+    });
+    await loadUsers();
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+    await loadUsers();
+  }
+}
+
+async function toggleUserStatus(id, newStatus) {
+  try {
+    await request(`/admin/users/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: newStatus })
+    });
+    await loadUsers();
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`¿Estás seguro de eliminar el usuario ${username}?`)) return;
+  try {
+    await request(`/admin/users/${id}`, { method: 'DELETE' });
+    await loadUsers();
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+function promptPasswordModal(id, username) {
+  targetUserId = id;
+  pwdTargetUser.textContent = `Usuario: ${username}`;
+  modalNewPassword.value = '';
+  pwdError.textContent = '';
+  passwordModal.style.display = 'flex';
+}
+
+async function savePassword() {
+  const p = modalNewPassword.value;
+  if (p.length < 8) {
+    pwdError.textContent = 'La contraseña debe tener al menos 8 caracteres.';
+    return;
+  }
+  try {
+    await request(`/admin/users/${targetUserId}/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: p })
+    });
+    passwordModal.style.display = 'none';
+    alert('Contraseña actualizada correctamente.');
+  } catch (err) {
+    pwdError.textContent = err.message || 'Error al actualizar contraseña.';
+  }
+}
+
+// Mobile Drawer Toggle
+drawerToggle.onclick = () => {
+  mapPanel.classList.add('drawer-open');
+  closeDrawerBtn.style.display = 'inline-block';
+};
+closeDrawerBtn.onclick = () => {
+  mapPanel.classList.remove('drawer-open');
+  closeDrawerBtn.style.display = 'none';
+};
+
+// Keydown listeners for inputs
+document.querySelectorAll('#query,#min,#max').forEach(el => {
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      mapSearchRun();
+    }
+  });
+});
+
+tableQuery.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    tableSearchRun();
+  }
+});
+
+// --- MÓDULO BUSCADOR SEPREC (SLIDE-OVER LATERAL) ---
+let currentSeprecQuery = '';
+let currentSeprecPage = 1;
+let totalSeprecResults = 0;
+let currentCompanyDetail = null;
+
+function openSeprecModal(defaultQuery = '') {
+  const modal = document.getElementById('seprecModal');
+  const input = document.getElementById('seprecInput');
+  if (!modal || !input) return;
+
+  showSeprecList();
+  modal.classList.add('open');
+
+  if (!defaultQuery) {
+    if (activeViewName === 'map') {
+      defaultQuery = document.getElementById('query')?.value || '';
+    } else if (activeViewName === 'table') {
+      defaultQuery = document.getElementById('tableQuery')?.value || '';
+    }
+  }
+
+  input.value = (defaultQuery || '').trim();
+
+  if (input.value.trim()) {
+    triggerSeprecSearch(1);
+  } else {
+    document.getElementById('seprecStatus').innerHTML = '';
+    document.getElementById('seprecResults').innerHTML = `
+      <div style="text-align:center; padding:30px; color:var(--slate-500);">
+        Escribe la Razón Social o Nombre de la Empresa y presiona <strong>BUSCAR EN SEPREC</strong>.
+      </div>`;
+    document.getElementById('seprecFooter').style.display = 'none';
+  }
+}
+
+function closeSeprecModal() {
+  const modal = document.getElementById('seprecModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function closeSeprecDetails() {
+  const detailView = document.getElementById('seprecDetailView');
+  const resultsScroll = document.getElementById('seprecResultsScroll');
+  const pagination = document.querySelector('.seprec-pagination') || document.getElementById('seprecFooter');
+
+  if (detailView) detailView.style.display = 'none';
+  if (resultsScroll) resultsScroll.style.display = 'block';
+  if (pagination && totalSeprecResults > 0) pagination.style.display = 'flex';
+}
+
+function showSeprecList() {
+  closeSeprecDetails();
+}
+
+function triggerSeprecSearch(page = 1) {
+  const input = document.getElementById('seprecInput');
+  const query = input ? input.value.trim() : '';
+  if (!query) {
+    const status = document.getElementById('seprecStatus');
+    if (status) {
+      status.className = 'error';
+      status.textContent = 'Por favor ingresa un término de búsqueda para SEPREC.';
+    }
+    return;
+  }
+  showSeprecList();
+  fetchSeprecData(query, page);
+}
+
+async function fetchSeprecData(query, page = 1) {
+  currentSeprecQuery = query;
+  currentSeprecPage = page;
+  
+  const statusDiv = document.getElementById('seprecStatus');
+  const resultsDiv = document.getElementById('seprecResults');
+  const searchBtn = document.getElementById('seprecSearchBtn');
+  const footerDiv = document.getElementById('seprecFooter');
+
+  statusDiv.className = 'status';
+  statusDiv.innerHTML = '<span style="color:var(--primary); font-weight:600;">⌛ Consultando API pública de SEPREC Bolivia...</span>';
+  if (searchBtn) searchBtn.disabled = true;
+
+  try {
+    const res = await request(`/seprec/buscar?filtro=${encodeURIComponent(query)}&limite=10&pagina=${page}`);
+    if (searchBtn) searchBtn.disabled = false;
+
+    if (!res || !res.finalizado || !res.datos) {
+      statusDiv.className = 'error';
+      statusDiv.textContent = res?.mensaje || 'No se obtuvieron resultados de SEPREC.';
+      resultsDiv.innerHTML = `<div style="text-align:center; padding:20px; color:var(--danger);">Sin resultados para "${esc(query)}".</div>`;
+      if (footerDiv) footerDiv.style.display = 'none';
+      return;
+    }
+
+    const filas = res.datos.filas || [];
+    totalSeprecResults = res.datos.total || filas.length;
+
+    statusDiv.className = 'success';
+    statusDiv.textContent = `Se encontraron ${totalSeprecResults} registro(s) en SEPREC para "${query}". (Página ${page})`;
+
+    if (filas.length === 0) {
+      resultsDiv.innerHTML = `<div style="text-align:center; padding:30px; color:var(--slate-500);">No se encontraron empresas asociadas a "${esc(query)}".</div>`;
+      if (footerDiv) footerDiv.style.display = 'none';
+      return;
+    }
+
+    resultsDiv.innerHTML = filas.map(f => {
+      const isActivo = (f.estado || '').toUpperCase().includes('ACTIVO');
+      const badgeStyle = isActivo
+        ? 'background:#dcfce7; color:#166534; border:1px solid #86efac;'
+        : 'background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;';
+      
+      const estadoTexto = f.estado || 'DESCONOCIDO';
+      const matricula = f.matricula || 'N/A';
+      const razonSocial = f.razonSocial || 'SIN RAZÓN SOCIAL';
+      const tipoSociedad = f.tipoSociedad || 'N/A';
+      const municipio = f.municipio || 'N/A';
+      const estadoActualiz = f.codEstadoActualizacion?.nombre || '';
+
+      const idEmpresa = f.id || f.idEmpresa || '';
+      const idEstablecimiento = f.idEstablecimiento || f.establecimientoId || idEmpresa;
+
+      return `
+        <div style="background:#ffffff; border:1px solid var(--border-color); border-radius:8px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px;">
+            <div style="font-weight:700; font-size:14px; color:var(--slate-900); line-height:1.3;">
+              ${esc(razonSocial)}
+            </div>
+            <span style="font-size:11px; font-weight:600; padding:3px 10px; border-radius:12px; white-space:nowrap; ${badgeStyle}">
+              ${esc(estadoTexto)}
+            </span>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px; font-size:12px; background:var(--slate-50); padding:10px; border-radius:6px; border:1px solid var(--border-color); margin-top:8px;">
+            <div><strong style="color:var(--slate-500);">Matrícula:</strong> <span style="color:#0369a1; font-weight:700;">${esc(matricula)}</span></div>
+            <div><strong style="color:var(--slate-500);">Tipo Sociedad:</strong> ${esc(tipoSociedad)}</div>
+            <div><strong style="color:var(--slate-500);">Municipio:</strong> ${esc(municipio)}</div>
+            ${f.matriculaAnterior ? `<div><strong style="color:var(--slate-500);">Mat. Anterior:</strong> ${esc(f.matriculaAnterior)}</div>` : ''}
+            ${estadoActualiz ? `<div><strong style="color:var(--slate-500);">Estado Reg.:</strong> <span style="color:var(--primary); font-weight:700;">${esc(estadoActualiz)}</span></div>` : ''}
+          </div>
+
+          ${f.actividadEconomica ? `
+            <div style="margin-top:8px; font-size:12px; color:var(--slate-600);">
+              <strong>Actividad Económica:</strong> ${esc(f.actividadEconomica)}
+            </div>
+          ` : ''}
+
+          <div style="display:flex; justify-content:flex-end; margin-top:12px; border-top:1px dashed var(--border-color); padding-top:10px;">
+            <button class="btn-sm primary" type="button" onclick="fetchSeprecDetails('${esc(idEmpresa)}', '${esc(idEstablecimiento)}')" style="font-size:12px; font-weight:600; height:34px; padding:0 14px;">
+              MÁS INFORMACIÓN
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (footerDiv) {
+      footerDiv.style.display = 'flex';
+      const prevBtn = document.getElementById('seprecPrevBtn');
+      const nextBtn = document.getElementById('seprecNextBtn');
+      const pageInfo = document.getElementById('seprecPaginationInfo');
+
+      const totalPages = Math.ceil(totalSeprecResults / 10);
+      if (pageInfo) pageInfo.textContent = `Página ${page} de ${totalPages || 1} (${totalSeprecResults} empresas)`;
+
+      if (prevBtn) prevBtn.disabled = (page <= 1);
+      if (nextBtn) nextBtn.disabled = (page >= totalPages);
+    }
+
+  } catch (err) {
+    if (searchBtn) searchBtn.disabled = false;
+    statusDiv.className = 'error';
+    statusDiv.textContent = err.message || 'Error de conexión con el servicio proxy de SEPREC.';
+    resultsDiv.innerHTML = `<div style="text-align:center; padding:20px; color:var(--danger);">${esc(err.message || 'Error inesperado')}</div>`;
+    if (footerDiv) footerDiv.style.display = 'none';
+  }
+}
+
+async function fetchSeprecDetails(idEmpresa, idEstablecimiento) {
+  const resultsScroll = document.getElementById('seprecResultsScroll');
+  const pagination = document.querySelector('.seprec-pagination') || document.getElementById('seprecFooter');
+  if (resultsScroll) resultsScroll.style.display = 'none';
+  if (pagination) pagination.style.display = 'none';
+
+  const detailView = document.getElementById('seprecDetailView');
+  detailView.style.display = 'flex';
+  detailView.innerHTML = '<div style="text-align:center; padding:30px; color:var(--slate-500);">Consultando base de datos oficial de SEPREC...</div>';
+
+  try {
+    const estParam = idEstablecimiento ? `&id_establecimiento=${encodeURIComponent(idEstablecimiento)}` : '';
+    const res = await request(`/seprec/detalle?id_empresa=${encodeURIComponent(idEmpresa)}${estParam}`);
+
+    const d = res.datos || res;
+    currentCompanyDetail = d;
+
+    const dirObj = d.direccion || {};
+    const depto = d.departamento || (typeof dirObj === 'object' ? dirObj.codDepartamento?.nombre : '') || '';
+    const prov = d.provincia || (typeof dirObj === 'object' ? dirObj.codProvincia?.nombre : '') || '';
+    const mun = d.municipio || (typeof dirObj === 'object' ? dirObj.codMunicipio?.nombre : '') || '';
+    const ubicacionStr = [depto, prov, mun].filter(Boolean).join(' - ') || 'No especificada';
+
+    let direccionStr = d.direccion;
+    if (typeof dirObj === 'object' && dirObj !== null) {
+      const tipoVia = dirObj.codTipoVia?.nombre || '';
+      const nombreVia = dirObj.nombreVia || '';
+      const numDom = dirObj.numeroDomicilio || '';
+      const edif = dirObj.edificio ? `Edif. ${dirObj.edificio}` : '';
+      const piso = dirObj.piso ? `Piso ${dirObj.piso}` : '';
+      direccionStr = `${tipoVia} ${nombreVia} N° ${numDom} ${edif} ${piso}`.trim() || d.direccion || '--';
+    }
+
+    let telefonos = d.telefonos || '';
+    let correos = d.correo || '';
+    if (Array.isArray(d.contactos)) {
+      let tels = [], ems = [];
+      d.contactos.forEach(c => {
+        if (c.tipoContacto === 'TELEFONO' && Array.isArray(c.descripcion)) {
+          c.descripcion.forEach(item => { if (item.numero) tels.push(item.numero); });
+        } else if (c.tipoContacto === 'CORREO' && Array.isArray(c.descripcion)) {
+          c.descripcion.forEach(item => { if (item.correo) ems.push(item.correo); });
+        }
+      });
+      if (tels.length) telefonos = tels.join(', ');
+      if (ems.length) correos = ems.join(', ');
+    }
+
+    let actividadText = d.actividad || d.objetoSocial;
+    if (!actividadText && Array.isArray(d.objetos_sociales) && d.objetos_sociales.length > 0) {
+      actividadText = d.objetos_sociales.map(o => o.objetoSocial).filter(Boolean).join('\n\n');
+    }
+    actividadText = actividadText || 'Sin registro de actividad detallada.';
+
+    const tipoSocStr = d.tipoSociedad || d.codTipoUnidadEconomica?.nombre || '--';
+    const razonSocialStr = d.razonSocial || d.nombreComercial || 'N/A';
+    const nitStr = d.nit || '--';
+    const matriculaStr = d.matricula || '--';
+    const estadoStr = d.estado || '--';
+    const isActivo = estadoStr.toUpperCase().includes('ACTIVO');
+
+    detailView.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap:wrap; gap:10px;">
+        <button class="btn-outline btn-sm" style="width: auto; border-color: var(--slate-300); color: var(--slate-700); font-weight:600;" onclick="closeSeprecDetails()">
+          ⬅ Volver a la lista
+        </button>
+        <button class="primary btn-sm" onclick="exportCompanyPDF()" style="background:#1e293b; border-color:#1e293b; font-weight:600;">
+          📄 EXPORTAR ANEXO LEGAL PDF
+        </button>
+      </div>
+
+      <div style="background: var(--slate-50); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px;">
+        <h3 style="color: var(--slate-900); margin-top: 0; border-bottom: 2px solid var(--primary); padding-bottom: 10px; font-size:18px; font-weight:700;">
+          ${esc(razonSocialStr)}
+        </h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 0; font-weight: 600; width: 38%; color:var(--slate-500);">Matrícula de Comercio</td>
+              <td style="padding: 10px 0; color: #0369a1; font-weight:700;">${esc(matriculaStr)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 0; font-weight: 600; color:var(--slate-500);">Identificación Tributaria (NIT)</td>
+              <td style="padding: 10px 0; color: var(--primary); font-weight:700;">${esc(nitStr)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 0; font-weight: 600; color:var(--slate-500);">Tipo Societario</td>
+              <td style="padding: 10px 0; color: var(--slate-800);">${esc(tipoSocStr)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 0; font-weight: 600; color:var(--slate-500);">Estado Matrícula</td>
+              <td style="padding: 10px 0; font-weight: 700; color: ${isActivo ? '#166534' : '#dc2626'};">${esc(estadoStr)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 0; font-weight: 600; color:var(--slate-500);">Ubicación</td>
+              <td style="padding: 10px 0; color: var(--slate-800);">${esc(ubicacionStr)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 0; font-weight: 600; color:var(--slate-500);">Dirección Comercial</td>
+              <td style="padding: 10px 0; color: var(--slate-800);">${esc(direccionStr)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 0; font-weight: 600; color:var(--slate-500);">Contacto</td>
+              <td style="padding: 10px 0; color: var(--slate-800);">📞 ${esc(telefonos || '--')} <br> ✉️ ${esc(correos || '--')}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding: 16px 0 6px 0; font-weight: 700; color:var(--slate-900);">Actividad Principal / Objeto Social:</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding: 14px; background:#ffffff; border:1px solid var(--border-color); border-radius:6px; text-align: justify; color: var(--slate-700); line-height: 1.5; font-size:13px; max-height:220px; overflow-y:auto; white-space:pre-wrap;">
+                ${esc(actividadText)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (error) {
+    detailView.innerHTML = `
+      <div style="text-align:center; padding:20px;">
+        <p style="color:var(--danger); font-weight:700;">Error al obtener los detalles de la empresa.</p>
+        <button class="btn-danger btn-sm" onclick="closeSeprecDetails()" style="width:auto;">Volver a intentar</button>
+      </div>`;
+  }
+}
+
+function exportCompanyPDF() {
+  if (!currentCompanyDetail) return;
+  const d = currentCompanyDetail;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('portrait', 'mm', 'a4');
+
+  const razonSocial = d.razonSocial || d.nombreComercial || 'N/A';
+  const matricula = d.matricula || '--';
+  const nit = d.nit || '--';
+  const tipoSoc = d.tipoSociedad || d.codTipoUnidadEconomica?.nombre || '--';
+  const estado = d.estado || '--';
+
+  const dirObj = d.direccion || {};
+  const depto = d.departamento || (typeof dirObj === 'object' ? dirObj.codDepartamento?.nombre : '') || '';
+  const prov = d.provincia || (typeof dirObj === 'object' ? dirObj.codProvincia?.nombre : '') || '';
+  const mun = d.municipio || (typeof dirObj === 'object' ? dirObj.codMunicipio?.nombre : '') || '';
+  const ubicacion = [depto, prov, mun].filter(Boolean).join(' - ') || 'No especificada';
+
+  let direccionFull = d.direccion;
+  if (typeof dirObj === 'object' && dirObj !== null) {
+    const tipoVia = dirObj.codTipoVia?.nombre || '';
+    const nombreVia = dirObj.nombreVia || '';
+    const numDom = dirObj.numeroDomicilio || '';
+    const edif = dirObj.edificio ? `Edif. ${dirObj.edificio}` : '';
+    const piso = dirObj.piso ? `Piso ${dirObj.piso}` : '';
+    direccionFull = `${tipoVia} ${nombreVia} N° ${numDom} ${edif} ${piso}`.trim() || d.direccion || '--';
+  }
+
+  let telefonos = d.telefonos || '';
+  let correos = d.correo || '';
+  if (Array.isArray(d.contactos)) {
+    let tels = [], ems = [];
+    d.contactos.forEach(c => {
+      if (c.tipoContacto === 'TELEFONO' && Array.isArray(c.descripcion)) {
+        c.descripcion.forEach(item => { if (item.numero) tels.push(item.numero); });
+      } else if (c.tipoContacto === 'CORREO' && Array.isArray(c.descripcion)) {
+        c.descripcion.forEach(item => { if (item.correo) ems.push(item.correo); });
+      }
+    });
+    if (tels.length) telefonos = tels.join(', ');
+    if (ems.length) correos = ems.join(', ');
+  }
+
+  let actividadFull = d.actividad || d.objetoSocial;
+  if (!actividadFull && Array.isArray(d.objetos_sociales) && d.objetos_sociales.length > 0) {
+    actividadFull = d.objetos_sociales.map(o => o.objetoSocial).filter(Boolean).join('\n\n');
+  }
+  actividadFull = actividadFull || 'Sin registro de actividad detallada.';
+
+  // Header Banner
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 210, 26, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CATASTRO MINERO DE BOLIVIA', 14, 12);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('ANEXO LEGAL: FICHA COMERCIAL REGISTRO SEPREC', 14, 19);
+
+  // Title
+  doc.setTextColor(234, 88, 12);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(razonSocial.substring(0, 75), 14, 35);
+
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.5);
+  doc.line(14, 39, 196, 39);
+
+  // AutoTable Data
+  const tableData = [
+    ['Matrícula de Comercio', matricula],
+    ['Identificación Tributaria (NIT)', nit],
+    ['Tipo Societario', tipoSoc],
+    ['Estado Matrícula', estado],
+    ['Ubicación Geográfica', ubicacion],
+    ['Dirección Comercial', direccionFull],
+    ['Contacto Oficial', `Teléfonos: ${telefonos || '--'} | Email: ${correos || '--'}`]
+  ];
+
+  doc.autoTable({
+    startY: 43,
+    head: [['CONCEPTO / REGISTRO', 'DATOS VERIFICADOS SEPREC']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9.5 },
+    columnStyles: {
+      0: { cellWidth: 55, fontStyle: 'bold', fillColor: [248, 250, 252] },
+      1: { cellWidth: 127 }
+    },
+    styles: { fontSize: 8.5, cellPadding: 3.5 }
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 8;
+
+  // Activity Block
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ACTIVIDAD PRINCIPAL / OBJETO SOCIAL:', 14, finalY);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  
+  const splitText = doc.splitTextToSize(actividadFull, 182);
+  doc.text(splitText, 14, finalY + 5);
+
+  // Footer
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Generado: ${new Date().toLocaleString()} | Catastro Minero Bolivia`, 14, 287);
+    doc.text(`Página ${i} de ${pageCount}`, 180, 287);
+  }
+
+  doc.save(`Anexo_Legal_SEPREC_${matricula || 'empresa'}.pdf`);
+}
+
+// Event Listeners
+loginForm.onsubmit = login;
+logoutBtn.onclick = logout;
+
+adminTabBtn.onclick = () => switchView('admin');
+mapTabBtn.onclick = () => switchView('map');
+tableTabBtn.onclick = () => switchView('table');
+
+mapSearchBtn.onclick = mapSearchRun;
+addToListBtn.onclick = addSearchToList;
+addTableToListBtn.onclick = addSearchToList;
+
+clearListBtn.onclick = clearAccumulatedList;
+clearTableListBtn.onclick = clearAccumulatedList;
+
+tableSearchBtn.onclick = tableSearchRun;
+viewReportBtn.onclick = openReportPreview;
+pdfButton.onclick = exportPDF;
+printReportModalBtn.onclick = exportPDF;
+
+closeReportModalBtn.onclick = () => reportPreviewModal.style.display = 'none';
+
+createUserBtn.onclick = createUser;
+changeOwnPasswordBtn.onclick = changeOwnPassword;
+
+cancelPwdBtn.onclick = () => passwordModal.style.display = 'none';
+savePwdBtn.onclick = savePassword;
+
+// SEPREC Modal Event Listeners
+closeSeprecModalBtn.onclick = closeSeprecModal;
+seprecPrevBtn.onclick = () => triggerSeprecSearch(currentSeprecPage - 1);
+seprecNextBtn.onclick = () => triggerSeprecSearch(currentSeprecPage + 1);
+
+window.addEventListener('click', e => {
+  if (e.target === seprecModal) closeSeprecModal();
+  if (e.target === passwordModal) passwordModal.style.display = 'none';
+  if (e.target === reportPreviewModal) reportPreviewModal.style.display = 'none';
+});
+
+// Dynamic Footer Year
+currentYear.textContent = new Date().getFullYear();
+
+// Run auth check on initial load
+checkAuth();
+</script>
+</body>
+</html>
