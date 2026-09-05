@@ -2,13 +2,13 @@
 
 Visor satelital e interactivo de áreas y derechos mineros en Bolivia desarrollado con PostgreSQL/PostGIS, FastAPI (Python), MapLibre GL JS y Nginx.
 
-## 🚀 Puesta en Marcha
+## 🚀 Puesta en Marcha y Despliegue
 
 ### Requisitos Previos
 - Docker (v20+)
 - Docker Compose (v2+)
 
-### Levantar el Stack de Servicios
+### Levantar el Stack de Servicios (Despliegue Cero-Configuración)
 
 1. Configurar variables de entorno iniciales:
    ```bash
@@ -20,6 +20,12 @@ Visor satelital e interactivo de áreas y derechos mineros en Bolivia desarrolla
    docker compose up -d --build
    ```
 
+> [!NOTE]
+> **Poblado Automático Inicial**: Al desplegar el proyecto por primera vez, el backend de FastAPI detectará la base de datos y cargará **automáticamente** en segundo plano todas las capas espaciales incluidas en el repositorio (`data/`):
+> - **Departamentos y Municipios**: 343 municipios de Bolivia y 9 departamentos autoderivados.
+> - **Comunidades y Lugares Poblados**: 20.650 puntos de poblaciones.
+> - **Catastro Minero Inicial**: 16.324 polígonos de concesiones mineras.
+
 ### 🌐 Puertos y Servicios Disponibles
 
 - **Visor Web (Frontend)**: [http://localhost:8081](http://localhost:8081)
@@ -29,64 +35,38 @@ Visor satelital e interactivo de áreas y derechos mineros en Bolivia desarrolla
 
 ---
 
-## 🗺️ Poblado de Datos en el Mapa
+## 🔄 Actualización Periódica del Catastro Minero (KML Mensual)
 
-El sistema cuenta con scripts integrados para la ingesta y preparación de las capas espaciales (**Departamentos**, **Municipios**, **Lugares Poblados** y **Concesiones Mineras**).
+A partir de la puesta en marcha inicial del sistema, **toda actualización periódica del catastro minero (KML mensual) se debe realizar exclusivamente desde el Panel de Administración Web**:
 
-### 1. Departamentos y Municipios (Límites Político-Administrativos)
+1. Ingresar al visor en [http://localhost:8081](http://localhost:8081) (o la URL de tu servidor).
+2. Iniciar sesión con credenciales de administrador (`admin` / `catastro2026`).
+3. Abrir el **Panel Admin** desde el botón ubicado en la barra superior.
+4. En el apartado **Actualizar Catastro Minero (KML Mensual)**:
+   - Hacer clic en **Seleccionar archivo** y adjuntar el archivo `.kml` actualizado (ej. `doc.kml` o `catastro.kml`, soporta hasta 500 MB).
+   - Presionar el botón **CARGAR E IMPORTAR KML**.
+5. El sistema procesará el KML, actualizará los polígonos en PostGIS y refrescará el visor automáticamente.
 
-Carga los **343 municipios** de Bolivia e infiere automáticamente los **9 departamentos** mediante agregación espacial (`ST_Union`).
+---
 
-- **Fuente de datos**: `data/municipios_bolivia_2024.geojson` *(descargado de Lab TecnoSocial / GeoINE)*
-- **Comando de carga**:
+## 🛠️ Comandos de Mantenimiento Avanzado (Opcionales por CLI)
+
+*(No requeridos para el uso normal. Solo útiles si deseas re-ejecutar scripts manualmente por línea de comandos)*:
+
+- **Re-importar Departamentos y Municipios**:
   ```bash
   docker compose exec backend python import_reference.py
   ```
-- *(Opcional)* Si requieres descargar nuevamente la fuente GeoJSON oficial:
-  ```bash
-  curl -fL -o data/municipios_bolivia_2024.geojson https://lab-tecnosocial.github.io/municipios-bolivia-2024/municipios_bolivia_2024.geojson
-  ```
 
-### 2. Lugares Poblados y Comunidades (Capa de Puntos)
-
-Ingesta **20.650 puntos** de comunidades, pueblos y ciudades en todo el territorio boliviano, registrando coordenadas WGS84 en la tabla PostGIS `poblaciones`.
-
-- **Fuente de datos**: `data/populated_places.kml`
-- **Comando de carga**:
+- **Re-importar Comunidades y Poblaciones**:
   ```bash
   docker compose exec backend python import_populated_places.py
   ```
 
-### 3. Catastro Minero (Polígonos y Concesiones Mineras)
-
-Carga los **16.324 polígonos** de concesiones y solicitudes de derechos mineros con sus 27 atributos descriptivos.
-
-- **Fuente de datos**: `data/catastro.kml` o `data/doc.kml`
-
-Existen dos opciones para realizar la carga:
-
-#### Opción A: Vía Línea de Comandos (Recomendado para la primera instalación)
-```bash
-docker compose exec backend python import_kml.py
-```
-
-#### Opción B: Desde el Panel de Administración Web
-1. Ingresar al visor en [http://localhost:8081](http://localhost:8081).
-2. Iniciar sesión como administrador (`admin` / `catastro2026`).
-3. Abrir el **Panel Admin** desde el botón ubicado en la barra superior.
-4. Seleccionar la opción **Cargar KML Actualizado**, adjuntar el archivo `.kml` (soporta archivos de hasta 500 MB) y presionar **Procesar y Cargar KML**.
-
----
-
-### ⚡ Secuencia Completa de Poblado Inicial (Ejecución en un solo paso)
-
-Para poblar la base de datos completamente desde cero con todas las capas espaciales:
-
-```bash
-docker compose exec backend python import_reference.py
-docker compose exec backend python import_populated_places.py
-docker compose exec backend python import_kml.py
-```
+- **Re-importar Catastro Minero KML por CLI**:
+  ```bash
+  docker compose exec backend python import_kml.py
+  ```
 
 ---
 
@@ -116,7 +96,7 @@ El acceso al visor y a la API requiere autenticación JWT.
 | `GET` | `/api/reference/locations` | Listado jerárquico de departamentos y municipios para filtros dinámicos. |
 | `GET` | `/api/seprec/buscar` | Consulta integrada en vivo de empresas registradas en SEPREC. |
 | `GET` | `/api/seprec/detalle` | Ficha técnica completa de empresas SEPREC por NIT o Matrícula. |
-| `POST` | `/api/admin/upload-kml` | Ingesta masiva de archivo KML de catastro minero (Admin). |
+| `POST` | `/api/admin/upload-kml` | Ingesta masiva de archivo KML de catastro minero (Panel Admin). |
 
 ---
 
@@ -128,5 +108,6 @@ Si necesitas limpiar la base de datos y recrear las tablas desde cero:
 docker compose down -v
 docker compose up -d --build
 ```
-Posteriormente, ejecuta la secuencia de poblado inicial descrita arriba.
+*(Al reiniciar, el sistema volverá a auto-poblar automáticamente todas las capas desde `data/`)*.
+
 
