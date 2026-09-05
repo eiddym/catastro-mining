@@ -16,6 +16,8 @@ from passlib.context import CryptContext
 from psycopg2.extras import RealDictCursor
 
 from import_kml import run_import
+from import_reference import import_reference
+from import_populated_places import import_points
 
 app = FastAPI(title="Catastro Minero - API Corporativa", version="2.0.0")
 
@@ -80,32 +82,68 @@ class LoginJSON(BaseModel):
 
 
 @app.on_event("startup")
-def sync_admin_user():
-    if not ADMIN_USER or not ADMIN_PASSWORD:
-        return
+def startup_init():
+    if ADMIN_USER and ADMIN_PASSWORD:
+        try:
+            pw_hash = password_context.hash(ADMIN_PASSWORD)
+            with psycopg2.connect(DB_URL) as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("SELECT id FROM usuarios WHERE username = %s", (ADMIN_USER,))
+                    row = cursor.fetchone()
+                    if row:
+                        cursor.execute(
+                            "UPDATE usuarios SET password_hash = %s, role = 'admin', is_active = TRUE WHERE id = %s",
+                            (pw_hash, row["id"])
+                        )
+                    else:
+                        cursor.execute(
+                            "INSERT INTO usuarios (username, password_hash, role, is_active) VALUES (%s, %s, 'admin', TRUE)",
+                            (ADMIN_USER, pw_hash)
+                        )
+                    # Create GIST spatial indexes if not exist
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_areas_mineras_geom ON areas_mineras USING GIST (geom);")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_divisiones_politicas_geom ON divisiones_politicas USING GIST (geom);")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_poblaciones_geom ON poblaciones USING GIST (geom);")
+        except Exception as e:
+            logger.error(f"Error al sincronizar usuario admin e índices: {e}")
+
+    # Auto-poblado automático de capas si las tablas están vacías
     try:
-        pw_hash = password_context.hash(ADMIN_PASSWORD)
         with psycopg2.connect(DB_URL) as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("SELECT id FROM usuarios WHERE username = %s", (ADMIN_USER,))
-                row = cursor.fetchone()
-                if row:
-                    cursor.execute(
-                        "UPDATE usuarios SET password_hash = %s, role = 'admin', is_active = TRUE WHERE id = %s",
-                        (pw_hash, row["id"])
-                    )
-                else:
-                    cursor.execute(
-                        "INSERT INTO usuarios (username, password_hash, role, is_active) VALUES (%s, %s, 'admin', TRUE)",
-                        (ADMIN_USER, pw_hash)
-                    )
-                # Create GIST spatial indexes if not exist
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_areas_mineras_geom ON areas_mineras USING GIST (geom);")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_divisiones_politicas_geom ON divisiones_politicas USING GIST (geom);")
-            conn.commit()
-        print(f"Usuario admin '{ADMIN_USER}' y los índices GIST PostGIS han sido verificados.")
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT COUNT(*) FROM divisiones_politicas")
+                ref_count = cursor.fetchone()[0]
+
+                cursor.execute("SELECT COUNT(*) FROM poblaciones")
+                pob_count = cursor.fetchone()[0]
+
+                cursor.execute("SELECT COUNT(*) FROM areas_mineras")
+                areas_count = cursor.fetchone()[0]
+
+        if ref_count == 0:
+            logger.info("Poblando automáticamente la capa de referencia (municipios/departamentos)...")
+            try:
+                import_reference()
+            except Exception as e:
+                logger.error(f"Error en auto-importación de referencia: {e}")
+
+        if pob_count == 0:
+            logger.info("Poblando automáticamente la capa de poblaciones...")
+            try:
+                import_points()
+            except Exception as e:
+                logger.error(f"Error en auto-importación de poblaciones: {e}")
+
+        if areas_count == 0:
+            logger.info("Poblando automáticamente el catastro minero desde KML...")
+            try:
+                run_import()
+            except Exception as e:
+                logger.error(f"Error en auto-importación KML: {e}")
+
     except Exception as e:
-        print(f"Error en startup: {e}")
+        logger.error(f"Error en chequeo de inicialización de datos: {e}")
+
 
 
 def get_db():
