@@ -1,6 +1,10 @@
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("uvicorn.error")
 
 import psycopg2
 from fastapi import Depends, FastAPI, HTTPException, Query, status, Request, File, UploadFile
@@ -406,17 +410,24 @@ async def upload_kml(
 
     temp_path = f"/tmp/upload_{uuid.uuid4().hex}_{file.filename}"
     try:
+        logger.info(f"Iniciando recepción de KML: {file.filename}")
         content = await file.read()
+        file_size_mb = len(content) / (1024 * 1024)
+        logger.info(f"Archivo KML guardado temporalmente: {temp_path} ({file_size_mb:.2f} MB)")
+
         with open(temp_path, "wb") as f:
             f.write(content)
 
+        logger.info(f"Ejecutando importación PostGIS para {temp_path}...")
         count = run_import(temp_path)
+        logger.info(f"Importación KML completada exitosamente: {count} polígonos insertados.")
 
         return {
-            "message": f"Archivo {file.filename} importado exitosamente.",
+            "message": f"Archivo {file.filename} ({file_size_mb:.2f} MB) importado exitosamente.",
             "poligono_count": count
         }
     except Exception as e:
+        logger.error(f"Error procesando KML {file.filename}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error procesando KML: {str(e)}")
     finally:
         if os.path.exists(temp_path):
