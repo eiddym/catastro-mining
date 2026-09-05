@@ -673,6 +673,38 @@ footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
   #seprecDetailView {
     padding: 10px !important;
   }
+  .seprec-detail-card {
+    padding: 12px !important;
+  }
+  .seprec-detail-table tr {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 0;
+  }
+  .seprec-detail-table td {
+    width: 100% !important;
+    padding: 2px 0 !important;
+    border: none !important;
+  }
+  .seprec-detail-table td:first-child {
+    font-weight: 700;
+    color: var(--slate-600);
+    font-size: 12px;
+  }
+}
+
+.seprec-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+  table-layout: fixed;
+}
+.seprec-detail-table td {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
 }
 </style>
 </head>
@@ -893,12 +925,16 @@ footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
           <!-- Anillo Central -->
           <circle cx="50" cy="50" r="6" fill="#0f172a" stroke="#ffffff" stroke-width="2" />
         </svg>
+      </div>
+    </div>
+
     <!-- Controls Carousel Widget para múltiples resultados en búsqueda de mapa -->
     <div id="mapSearchResultNav" style="display:none; position:absolute; top:18px; left:50%; transform:translateX(-50%); z-index:30; background:rgba(15,23,42,0.88); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); color:#ffffff; border-radius:30px; padding:4px 14px; box-shadow:0 10px 30px rgba(0,0,0,0.4); align-items:center; gap:8px; font-size:12px; font-weight:600;">
       <button id="mapResultPrevBtn" type="button" onclick="navigateMapResult(-1)" style="background:rgba(255,255,255,0.15); border:none; color:#ffffff; border-radius:50%; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; transition:background 0.2s;" title="Polígono anterior">◀</button>
       <span id="mapResultNavText" style="white-space:nowrap; font-size:12px;">Polígono 1 de 1</span>
       <button id="mapResultNextBtn" type="button" onclick="navigateMapResult(1)" style="background:rgba(255,255,255,0.15); border:none; color:#ffffff; border-radius:50%; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; transition:background 0.2s;" title="Polígono siguiente">▶</button>
     </div>
+
     <div id="map"></div>
   </section>
 
@@ -2585,11 +2621,11 @@ async function fetchSeprecDetails(idEmpresa, idEstablecimiento) {
         </button>
       </div>
 
-      <div style="background: var(--slate-50); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px;">
-        <h3 style="color: var(--slate-900); margin-top: 0; border-bottom: 2px solid var(--primary); padding-bottom: 10px; font-size:18px; font-weight:700;">
+      <div class="seprec-detail-card" style="background: var(--slate-50); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px;">
+        <h3 style="color: var(--slate-900); margin-top: 0; border-bottom: 2px solid var(--primary); padding-bottom: 10px; font-size:18px; font-weight:700; word-break:break-word;">
           ${esc(razonSocialStr)}
         </h3>
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+        <table class="seprec-detail-table">
           <tbody>
             <tr style="border-bottom: 1px solid var(--border-color);">
               <td style="padding: 10px 0; font-weight: 600; width: 38%; color:var(--slate-500);">Matrícula de Comercio</td>
@@ -2620,10 +2656,10 @@ async function fetchSeprecDetails(idEmpresa, idEstablecimiento) {
               <td style="padding: 10px 0; color: var(--slate-800);">📞 ${esc(telefonos || '--')} <br> ✉️ ${esc(correos || '--')}</td>
             </tr>
             <tr>
-              <td colspan="2" style="padding: 16px 0 6px 0; font-weight: 700; color:var(--slate-900);">Actividad Principal / Objeto Social:</td>
+              <td colspan="2" style="padding: 16px 0 6px 0; font-weight: 700; color:var(--slate-900); width:100%;">Actividad Principal / Objeto Social:</td>
             </tr>
             <tr>
-              <td colspan="2" style="padding: 14px; background:#ffffff; border:1px solid var(--border-color); border-radius:6px; text-align: justify; color: var(--slate-700); line-height: 1.5; font-size:13px; max-height:220px; overflow-y:auto; white-space:pre-wrap;">
+              <td colspan="2" style="padding: 14px; background:#ffffff; border:1px solid var(--border-color); border-radius:6px; text-align: justify; color: var(--slate-700); line-height: 1.5; font-size:13px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; width:100%;">
                 ${esc(actividadText)}
               </td>
             </tr>
