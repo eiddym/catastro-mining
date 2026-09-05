@@ -2377,6 +2377,32 @@ let currentSeprecPage = 1;
 let totalSeprecResults = 0;
 let currentCompanyDetail = null;
 
+function cleanSeprecQuery(q) {
+  if (!q) return '';
+  let s = String(q).trim();
+  const patterns = [
+    /\bs\.?\s*r\.?\s*l\.?\b/gi,
+    /\bs\.?\s*a\.?\s*m\.?\b/gi,
+    /\bs\.?\s*a\.?\b/gi,
+    /\br\.?\s*l\.?\b/gi,
+    /\bltda\.?\b/gi,
+    /\bcoop\.?\b/gi,
+    /\bcooperativa\b/gi,
+    /\bsociedad\s+de\s+responsabilidad\s+limitada\b/gi,
+    /\bsociedad\s+anonima\b/gi,
+    /\bsoc\.?\s*anonima\b/gi
+  ];
+  let cleaned = s;
+  patterns.forEach(pat => {
+    cleaned = cleaned.replace(pat, '');
+  });
+  cleaned = cleaned.replace(/[\.,\-_/\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleaned) {
+    cleaned = s.replace(/[\.,]/g, '').trim();
+  }
+  return cleaned;
+}
+
 function openSeprecModal(defaultQuery = '') {
   const modal = document.getElementById('seprecModal');
   const input = document.getElementById('seprecInput');
@@ -2393,7 +2419,8 @@ function openSeprecModal(defaultQuery = '') {
     }
   }
 
-  input.value = (defaultQuery || '').trim();
+  const cleaned = cleanSeprecQuery(defaultQuery);
+  input.value = cleaned || (defaultQuery || '').trim();
 
   if (input.value.trim()) {
     triggerSeprecSearch(1);
@@ -2428,8 +2455,8 @@ function showSeprecList() {
 
 function triggerSeprecSearch(page = 1) {
   const input = document.getElementById('seprecInput');
-  const query = input ? input.value.trim() : '';
-  if (!query) {
+  let rawQuery = input ? input.value.trim() : '';
+  if (!rawQuery) {
     const status = document.getElementById('seprecStatus');
     if (status) {
       status.className = 'error';
@@ -2437,8 +2464,13 @@ function triggerSeprecSearch(page = 1) {
     }
     return;
   }
+  const cleaned = cleanSeprecQuery(rawQuery);
+  const finalQuery = cleaned || rawQuery;
+  if (input && cleaned) {
+    input.value = cleaned;
+  }
   showSeprecList();
-  fetchSeprecData(query, page);
+  fetchSeprecData(finalQuery, page);
 }
 
 async function fetchSeprecData(query, page = 1) {

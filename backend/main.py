@@ -568,6 +568,33 @@ def get_poblaciones(min_pob: int = Query(0, ge=0), limit: int = Query(5000, ge=1
         return cursor.fetchone()["geojson"]
 
 
+def clean_seprec_query(q: str) -> str:
+    if not q:
+        return ""
+    import re
+    s = q.strip()
+    patterns = [
+        r'\bs\.?\s*r\.?\s*l\.?\b',
+        r'\bs\.?\s*a\.?\s*m\.?\b',
+        r'\bs\.?\s*a\.?\b',
+        r'\br\.?\s*l\.?\b',
+        r'\bltda\.?\b',
+        r'\bcoop\.?\b',
+        r'\bcooperativa\b',
+        r'\bsociedad\s+de\s+responsabilidad\s+limitada\b',
+        r'\bsociedad\s+anonima\b',
+        r'\bsoc\.?\s*anonima\b',
+    ]
+    cleaned = s
+    for pat in patterns:
+        cleaned = re.sub(pat, '', cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.replace('.', ' ').replace(',', ' ').replace('-', ' ').replace('_', ' ').replace('/', ' ')
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    if not cleaned:
+        cleaned = s.replace('.', '').replace(',', '').strip()
+    return cleaned
+
+
 @app.get("/api/seprec/buscar")
 def buscar_seprec(
     filtro: str = Query(..., description="Texto de búsqueda para empresa en SEPREC"),
@@ -579,7 +606,7 @@ def buscar_seprec(
     import urllib.parse
     import json
 
-    search_query = filtro.strip()
+    search_query = clean_seprec_query(filtro)
     if not search_query:
         return {"finalizado": True, "mensaje": "Búsqueda vacía", "datos": {"total": 0, "filas": []}}
 
