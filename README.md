@@ -1,76 +1,132 @@
-# Catastro Mining
+# Catastro Mining - Visor Satelital de Concesiones y Áreas Mineras
 
-Visor satelital de áreas mineras con PostgreSQL/PostGIS, API FastAPI e ingestor KML.
+Visor satelital e interactivo de áreas y derechos mineros en Bolivia desarrollado con PostgreSQL/PostGIS, FastAPI (Python), MapLibre GL JS y Nginx.
 
-## Puesta en marcha
+## 🚀 Puesta en Marcha
 
-Requisitos: Docker y Docker Compose.
+### Requisitos Previos
+- Docker (v20+)
+- Docker Compose (v2+)
 
-```bash
-cp .env.example .env
-docker compose up -d --build
-```
+### Levantar el Stack de Servicios
 
-Coloca el archivo KML como `data/catastro.kml` y ejecuta la carga:
+1. Configurar variables de entorno iniciales:
+   ```bash
+   cp .env.example .env
+   ```
 
+2. Iniciar todos los contenedores:
+   ```bash
+   docker compose up -d --build
+   ```
+
+### 🌐 Puertos y Servicios Disponibles
+
+- **Visor Web (Frontend)**: [http://localhost:8081](http://localhost:8081)
+- **API Backend / Swagger Docs**: [http://localhost:8001/docs](http://localhost:8001/docs) *(ó [http://localhost:8081/api/docs](http://localhost:8081/api/docs))*
+- **Salud del Stack**: [http://localhost:8081/health](http://localhost:8081/health)
+- **Base de Datos PostGIS**: `localhost:5432`
+
+---
+
+## 🗺️ Poblado de Datos en el Mapa
+
+El sistema cuenta con scripts integrados para la ingesta y preparación de las capas espaciales (**Departamentos**, **Municipios**, **Lugares Poblados** y **Concesiones Mineras**).
+
+### 1. Departamentos y Municipios (Límites Político-Administrativos)
+
+Carga los **343 municipios** de Bolivia e infiere automáticamente los **9 departamentos** mediante agregación espacial (`ST_Union`).
+
+- **Fuente de datos**: `data/municipios_bolivia_2024.geojson` *(descargado de Lab TecnoSocial / GeoINE)*
+- **Comando de carga**:
+  ```bash
+  docker compose exec backend python import_reference.py
+  ```
+- *(Opcional)* Si requieres descargar nuevamente la fuente GeoJSON oficial:
+  ```bash
+  curl -fL -o data/municipios_bolivia_2024.geojson https://lab-tecnosocial.github.io/municipios-bolivia-2024/municipios_bolivia_2024.geojson
+  ```
+
+### 2. Lugares Poblados y Comunidades (Capa de Puntos)
+
+Ingesta **20.650 puntos** de comunidades, pueblos y ciudades en todo el territorio boliviano, registrando coordenadas WGS84 en la tabla PostGIS `poblaciones`.
+
+- **Fuente de datos**: `data/populated_places.kml`
+- **Comando de carga**:
+  ```bash
+  docker compose exec backend python import_populated_places.py
+  ```
+
+### 3. Catastro Minero (Polígonos y Concesiones Mineras)
+
+Carga los **16.324 polígonos** de concesiones y solicitudes de derechos mineros con sus 27 atributos descriptivos.
+
+- **Fuente de datos**: `data/catastro.kml` o `data/doc.kml`
+
+Existen dos opciones para realizar la carga:
+
+#### Opción A: Vía Línea de Comandos (Recomendado para la primera instalación)
 ```bash
 docker compose exec backend python import_kml.py
 ```
 
-Servicios:
+#### Opción B: Desde el Panel de Administración Web
+1. Ingresar al visor en [http://localhost:8081](http://localhost:8081).
+2. Iniciar sesión como administrador (`admin` / `catastro2026`).
+3. Abrir el **Panel Admin** desde el botón ubicado en la barra superior.
+4. Seleccionar la opción **Cargar KML Actualizado**, adjuntar el archivo `.kml` (soporta archivos de hasta 500 MB) y presionar **Procesar y Cargar KML**.
 
-- Visor: http://localhost:8080
-- API / Swagger: http://localhost:8000/docs
-- Salud del stack: http://localhost:8080/health
-- PostgreSQL: `localhost:5432`
+---
 
-La base de datos se inicializa automáticamente en el primer arranque. Para reinicializarla desde cero, elimina el volumen `catastro-mining_pgdata` cuando no necesites conservar los datos.
+### ⚡ Secuencia Completa de Poblado Inicial (Ejecución en un solo paso)
 
-## Acceso y consultas
-
-El visor solicita autenticación antes de consultar datos. Con la configuración de ejemplo, usa `admin` / `catastro2026`; en producción define `JWT_SECRET_KEY`, `ADMIN_USER` y `ADMIN_PASSWORD` en `.env`.
-
-- `POST /api/auth/token`: obtiene el token JWT mediante `username` y `password` form-encoded.
-- `GET /api/areas`: GeoJSON con los 27 atributos descriptivos del KML.
-- `GET /api/areas/tabular`: resultados planos para la vista de lista.
-- `GET /api/areas/metrics`: total, extensión acumulada y cantidad de actores.
-
-Las consultas protegidas requieren `Authorization: Bearer <token>`.
-
-## Capas de referencia
-
-Coloca `departamentos.geojson` y `poblaciones.geojson` en `data/`. Los archivos deben estar en EPSG:4326. Cárgalos después de obtener un token de base de datos con:
+Para poblar la base de datos completamente desde cero con todas las capas espaciales:
 
 ```bash
-API_PORT=8001 WEB_PORT=8081 POSTGRES_PORT=5434 docker compose exec -T backend ogr2ogr -f PostgreSQL \
-	PG:"host=db user=postgres password=postgrespassword dbname=catastro_minero" \
-	/app/data/departamentos.geojson -nln divisiones_politicas -append -t_srs EPSG:4326
-
-API_PORT=8001 WEB_PORT=8081 POSTGRES_PORT=5434 docker compose exec -T backend ogr2ogr -f PostgreSQL \
-	PG:"host=db user=postgres password=postgrespassword dbname=catastro_minero" \
-	/app/data/poblaciones.geojson -nln poblaciones -append -t_srs EPSG:4326
+docker compose exec backend python import_reference.py
+docker compose exec backend python import_populated_places.py
+docker compose exec backend python import_kml.py
 ```
 
-Los endpoints protegidos son `GET /api/capas/departamentos` y `GET /api/capas/poblaciones?min_pob=0`. El visor activa ambas capas por defecto y permite ocultarlas desde el panel del mapa.
+---
 
-La fuente municipal 2024 se descarga desde Lab TecnoSocial y se carga con:
+## 🔑 Autenticación y Seguridad
+
+El acceso al visor y a la API requiere autenticación JWT.
+
+- **Credenciales por defecto**: `admin` / `catastro2026`.
+- **Control Anticoncurrencia de Sesiones**: Solo se permite una sesión activa simultánea por usuario; al iniciar sesión en un dispositivo nuevo, los tokens anteriores quedan invalidados automáticamente.
+- **Configuración de Producción**: Para un entorno de producción, define en el archivo `.env`:
+  ```env
+  JWT_SECRET_KEY=clave_secreta_super_segura
+  ADMIN_USER=tu_usuario_admin
+  ADMIN_PASSWORD=tu_contrasena_segura
+  ```
+
+---
+
+## 🛰️ Endpoints Principales de la API
+
+| Método | Endpoint | Descripción |
+| :--- | :--- | :--- |
+| `POST` | `/api/auth/login` | Autenticación de usuarios y obtención de token JWT. |
+| `GET` | `/api/areas` | GeoJSON optimizado de polígonos mineros con atributos para data-driven styling. |
+| `GET` | `/api/capas/departamentos` | GeoJSON con límites poligonales de los 9 departamentos. |
+| `GET` | `/api/capas/poblaciones` | GeoJSON con los 20.650 puntos de poblaciones. |
+| `GET` | `/api/reference/locations` | Listado jerárquico de departamentos y municipios para filtros dinámicos. |
+| `GET` | `/api/seprec/buscar` | Consulta integrada en vivo de empresas registradas en SEPREC. |
+| `GET` | `/api/seprec/detalle` | Ficha técnica completa de empresas SEPREC por NIT o Matrícula. |
+| `POST` | `/api/admin/upload-kml` | Ingesta masiva de archivo KML de catastro minero (Admin). |
+
+---
+
+## 🗄️ Reinicialización de la Base de Datos
+
+Si necesitas limpiar la base de datos y recrear las tablas desde cero:
 
 ```bash
-curl -fL -o data/municipios_bolivia_2024.geojson \
-	https://lab-tecnosocial.github.io/municipios-bolivia-2024/municipios_bolivia_2024.geojson
-API_PORT=8001 WEB_PORT=8081 POSTGRES_PORT=5434 docker compose exec -T backend python import_reference.py
+docker compose down -v
+docker compose up -d --build
 ```
+Posteriormente, ejecuta la secuencia de poblado inicial descrita arriba.
 
-El importador conserva `idep`, `iprov` e `imun` como `codigo_ine`, normaliza polígonos a `MultiPolygon`, carga las 343 unidades municipales y deriva los 9 límites departamentales mediante `ST_Union`. Las poblaciones requieren una fuente de puntos independiente.
-
-### Lugares poblados KML
-
-El archivo `data/populated_places.kml` aporta puntos de lugares poblados. Se ignoran sus polígonos residenciales y se cargan únicamente sus 20.650 elementos `Point`:
-
-```bash
-API_PORT=8001 WEB_PORT=8081 POSTGRES_PORT=5434 docker compose exec -T backend python import_populated_places.py
-```
-
-El KML usa coordenadas `latitud,longitud`; el importador las normaliza a PostGIS como `longitud,latitud` en EPSG:4326.
-
-Este KML aporta lugares poblados y sirve como capa de puntos de respaldo. Para comunidades del Censo 2024, la fuente recomendada sigue siendo `censosbo`/geoportal del INE; los manzanos urbanos son una capa poligonal distinta.
