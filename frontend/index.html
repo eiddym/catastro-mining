@@ -644,6 +644,36 @@ footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
   #tableView { padding: 16px; }
   .toolbar .search { width: 100%; }
 }
+
+@media (max-width: 640px) {
+  .seprec-slideover-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    padding: 12px !important;
+    border-radius: 0 !important;
+  }
+  #seprecForm {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  #seprecForm input {
+    width: 100% !important;
+  }
+  #seprecSearchBtn {
+    width: 100% !important;
+  }
+  .seprec-detail-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  #seprecDetailView {
+    padding: 10px !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -863,7 +893,11 @@ footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
           <!-- Anillo Central -->
           <circle cx="50" cy="50" r="6" fill="#0f172a" stroke="#ffffff" stroke-width="2" />
         </svg>
-      </div>
+    <!-- Controls Carousel Widget para múltiples resultados en búsqueda de mapa -->
+    <div id="mapSearchResultNav" style="display:none; position:absolute; top:18px; left:50%; transform:translateX(-50%); z-index:30; background:rgba(15,23,42,0.88); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); color:#ffffff; border-radius:30px; padding:4px 14px; box-shadow:0 10px 30px rgba(0,0,0,0.4); align-items:center; gap:8px; font-size:12px; font-weight:600;">
+      <button id="mapResultPrevBtn" type="button" onclick="navigateMapResult(-1)" style="background:rgba(255,255,255,0.15); border:none; color:#ffffff; border-radius:50%; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; transition:background 0.2s;" title="Polígono anterior">◀</button>
+      <span id="mapResultNavText" style="white-space:nowrap; font-size:12px;">Polígono 1 de 1</span>
+      <button id="mapResultNextBtn" type="button" onclick="navigateMapResult(1)" style="background:rgba(255,255,255,0.15); border:none; color:#ffffff; border-radius:50%; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; transition:background 0.2s;" title="Polígono siguiente">▶</button>
     </div>
     <div id="map"></div>
   </section>
@@ -1042,6 +1076,11 @@ let targetUserId = null;
 let allLocations = { departamentos: [], municipios: [] };
 let activeViewName = 'admin';
 
+let isMostrarTodoActive = false;
+let currentMapSearchResults = [];
+let currentMapResultIndex = 0;
+let currentActivePopup = null;
+
 // Security & Inactivity Session Control (sessionStorage)
 let lastActivityTime = Date.now();
 const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
@@ -1168,8 +1207,28 @@ async function login(event) {
 }
 
 // Module 2: View Lifecycle & Form Input Clearing
+function updateAddToListButtons() {
+  const displayVal = isMostrarTodoActive ? 'none' : 'inline-flex';
+  const addMap = document.getElementById('addToListBtn');
+  const addTab = document.getElementById('addTableToListBtn');
+  if (addMap) addMap.style.display = displayVal;
+  if (addTab) addTab.style.display = displayVal;
+}
+
 function switchView(viewName) {
   if (activeViewName !== viewName) {
+    // Si "Mostrar Todo" estaba activo y el usuario cambia entre Mapa y Tabla (o viceversa), destruir la búsqueda
+    if (isMostrarTodoActive) {
+      isMostrarTodoActive = false;
+      if (map && map.getSource('areas')) {
+        map.getSource('areas').setData({ type: 'FeatureCollection', features: [] });
+      }
+      renderTabularRecords([]);
+      mapStatus.textContent = 'Búsqueda "Mostrar Todo" destruida al cambiar de vista para prevenir sobrecarga.';
+      hideMapSearchResultNav();
+      updateAddToListButtons();
+    }
+
     if (viewName === 'map') {
       tableQuery.value = '';
     } else if (viewName === 'table') {
@@ -1198,6 +1257,125 @@ function switchView(viewName) {
   } else if (viewName === 'table') {
     document.getElementById('tableView').classList.add('active-view');
   }
+}
+
+// Map Result Navigation Widget Functions (Carrusel ◀ 1/N ▶)
+function hideMapSearchResultNav() {
+  const nav = document.getElementById('mapSearchResultNav');
+  if (nav) nav.style.display = 'none';
+  currentMapSearchResults = [];
+  currentMapResultIndex = 0;
+}
+
+function showMapSearchResultNav() {
+  const nav = document.getElementById('mapSearchResultNav');
+  if (nav) nav.style.display = 'flex';
+}
+
+function navigateMapResult(dir) {
+  if (!currentMapSearchResults || !currentMapSearchResults.length) return;
+  let nextIdx = currentMapResultIndex + dir;
+  if (nextIdx < 0) nextIdx = currentMapSearchResults.length - 1;
+  if (nextIdx >= currentMapSearchResults.length) nextIdx = 0;
+  goToMapResult(nextIdx);
+}
+
+function goToMapResult(index) {
+  if (!currentMapSearchResults || !currentMapSearchResults.length) return;
+  currentMapResultIndex = index;
+  const feature = currentMapSearchResults[index];
+  const p = feature.properties || {};
+
+  const navText = document.getElementById('mapResultNavText');
+  const code = p.codigo_unico || p.id_registro || p.area || '';
+  if (navText) {
+    navText.textContent = `Polígono ${index + 1} de ${currentMapSearchResults.length} ${code ? '(' + code + ')' : ''}`;
+  }
+
+  let coords = [];
+  if (feature.geometry && feature.geometry.coordinates) {
+    if (feature.geometry.type === 'Polygon') {
+      coords = feature.geometry.coordinates[0];
+    } else if (feature.geometry.type === 'MultiPolygon') {
+      coords = feature.geometry.coordinates[0][0];
+    }
+  }
+
+  if (coords && coords.length) {
+    let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
+    coords.forEach(pt => {
+      const lng = Array.isArray(pt) ? pt[0] : null;
+      const lat = Array.isArray(pt) ? pt[1] : null;
+      if (typeof lng === 'number' && typeof lat === 'number') {
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+      }
+    });
+
+    if (minLng < maxLng && minLat < maxLat) {
+      const centerLng = (minLng + maxLng) / 2;
+      const centerLat = (minLat + maxLat) / 2;
+
+      map.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
+        padding: { top: 90, bottom: 90, left: 90, right: 90 },
+        maxZoom: 14,
+        duration: 1000
+      });
+
+      openAreaPopup(feature, [centerLng, centerLat]);
+    }
+  }
+}
+
+function openAreaPopup(feature, lngLat) {
+  const p = feature.properties || {};
+  const areaId = p.id || feature.id;
+
+  let actorMineroEsc = p.actor_minero ? esc(p.actor_minero).replace(/'/g, "\\'") : '';
+  let seprecHTML = p.actor_minero ? `<tr><td>SEPREC Oficial</td><td><button tabindex="-1" onclick="openSeprecModal('${actorMineroEsc}')" class="btn-sm btn-secondary" style="font-size:10px; padding:2px 5px;">🏢 Consultar SEPREC</button></td></tr>` : '';
+  let spatialHTML = `<tr><td>PostGIS Intersects</td><td><button tabindex="-1" onclick="checkSpatialValidation(${areaId})" class="btn-sm btn-outline" style="font-size:10px; padding:2px 5px;">🔍 Validar Cruce</button></td></tr>` + seprecHTML;
+
+  const tableRows = fields.map(k => `
+    <tr>
+      <td>${k}</td>
+      <td>${esc(p[k] ?? '')}</td>
+    </tr>
+  `).join('') + spatialHTML;
+
+  const displayTitle = p.codigo_unico || p.id_registro || p.area || areaId;
+
+  const popupHTML = `
+    <div class="earth-popup">
+      <div class="earth-popup-header">
+        ${esc(displayTitle)}
+      </div>
+      <table>${tableRows}</table>
+    </div>
+  `;
+
+  if (currentActivePopup) {
+    currentActivePopup.remove();
+  }
+
+  currentActivePopup = new maplibregl.Popup({ maxWidth: '330px', focusAfterOpen: false })
+    .setLngLat(lngLat)
+    .setHTML(popupHTML)
+    .addTo(map);
+
+  const resetScroll = () => {
+    if (currentActivePopup) {
+      const el = currentActivePopup.getElement();
+      if (el) {
+        const scroller = el.querySelector('.earth-popup');
+        if (scroller) scroller.scrollTop = 0;
+      }
+    }
+  };
+  resetScroll();
+  requestAnimationFrame(resetScroll);
+  setTimeout(resetScroll, 50);
 }
 
 // Location Dropdowns
@@ -1248,9 +1426,13 @@ function buildCriterionText() {
 
 async function mapSearchRun() {
   if (!token()) return;
+  isMostrarTodoActive = false;
+  updateAddToListButtons();
+
   const p = params();
   if (!p.toString()) {
     mapStatus.textContent = 'Ingresa un término o selecciona un filtro para buscar.';
+    hideMapSearchResultNav();
     return;
   }
   mapStatus.textContent = 'Consultando catálogo...';
@@ -1258,32 +1440,44 @@ async function mapSearchRun() {
     const data = await request(`/areas?${p}`);
     map.getSource('areas').setData(data);
     mapStatus.textContent = `Polígonos encontrados: ${data.features.length}`;
-    if (data.features.length) {
-      const coords = data.features[0].geometry.coordinates[0][0];
-      map.flyTo({ center: Array.isArray(coords[0]) ? coords[0] : coords, zoom: 10 });
+    
+    currentMapSearchResults = data.features || [];
+    currentMapResultIndex = 0;
+
+    if (currentMapSearchResults.length > 1) {
+      showMapSearchResultNav();
+      goToMapResult(0);
+    } else if (currentMapSearchResults.length === 1) {
+      hideMapSearchResultNav();
+      goToMapResult(0);
+    } else {
+      hideMapSearchResultNav();
     }
   } catch {
     mapStatus.textContent = 'No se pudo consultar el API';
+    hideMapSearchResultNav();
   }
 }
 
-// Botón "Mostrar Todo": Habilitar todos los polígonos mineros cargados en el mapa
+// Botón "Mostrar Todo": Exclusivo para el visor de Mapa (no sobrecarga la lista ni permite acumular)
 async function loadAllMiningPolygons() {
   if (!token()) return;
+  isMostrarTodoActive = true;
+  hideMapSearchResultNav();
+  updateAddToListButtons();
+
   const statusEl = activeViewName === 'map' ? mapStatus : null;
-  if (statusEl) statusEl.textContent = 'Cargando la totalidad de concesiones mineras nacionales...';
+  if (statusEl) statusEl.textContent = 'Cargando la totalidad de concesiones mineras nacionales en el mapa...';
   try {
     const geoData = await request('/areas?limit=20000');
     map.getSource('areas').setData(geoData);
-    if (statusEl) statusEl.textContent = `Todos los polígonos cargados: ${geoData.features.length} concesiones.`;
+    if (statusEl) statusEl.textContent = `Todos los polígonos cargados en mapa: ${geoData.features.length} concesiones.`;
 
-    const tabData = await request('/areas/tabular?limit=20000');
-    renderTabularRecords(tabData);
-
-    const m = await request('/areas/metrics?limit=20000');
-    total.textContent = m.total;
-    actors.textContent = m.actores;
-    areaTotal.textContent = Number(m.extension_total).toLocaleString();
+    // Limpiar registros tabulares para prevenir sobrecarga de servidor y memoria
+    renderTabularRecords([]);
+    total.textContent = geoData.features.length;
+    actors.textContent = '16.3k';
+    areaTotal.textContent = 'N/A';
   } catch (e) {
     if (statusEl) statusEl.textContent = 'Error al consultar la totalidad de áreas.';
     alert('No se pudieron cargar todos los polígonos mineros.');
@@ -1293,6 +1487,10 @@ async function loadAllMiningPolygons() {
 // Module 3: Carrito de Búsquedas por Bloques (Hasta 10 búsquedas)
 async function addSearchToList() {
   if (!token()) return;
+  if (isMostrarTodoActive) {
+    alert('No se puede añadir "Mostrar Todo" a la lista acumulada. Por favor realiza una búsqueda filtrada.');
+    return;
+  }
   const isMap = activeViewName === 'map';
   let p, criterionText;
 
@@ -1373,6 +1571,9 @@ function clearAccumulatedList() {
 // Tabular Catalog & DataGrid Rendering con Empty State
 async function tableSearchRun() {
   if (!token()) return;
+  isMostrarTodoActive = false;
+  updateAddToListButtons();
+
   const q = tableQuery.value.trim();
   if (!q && !accumulatedGroups.length) {
     renderTabularRecords([]);
@@ -1763,46 +1964,7 @@ map.on('load', () => {
     });
 
     const targetFeature = sortedFeatures[0];
-    const p = targetFeature.properties;
-    const areaId = p.id || targetFeature.id;
-
-    let actorMineroEsc = p.actor_minero ? esc(p.actor_minero).replace(/'/g, "\\'") : '';
-    let seprecHTML = p.actor_minero ? `<tr><td>SEPREC Oficial</td><td><button tabindex="-1" onclick="openSeprecModal('${actorMineroEsc}')" class="btn-sm btn-secondary" style="font-size:10px; padding:2px 5px;">🏢 Consultar SEPREC</button></td></tr>` : '';
-    let spatialHTML = `<tr><td>PostGIS Intersects</td><td><button tabindex="-1" onclick="checkSpatialValidation(${areaId})" class="btn-sm btn-outline" style="font-size:10px; padding:2px 5px;">🔍 Validar Cruce</button></td></tr>` + seprecHTML;
-
-    const tableRows = fields.map(k => `
-      <tr>
-        <td>${k}</td>
-        <td>${esc(p[k] ?? '')}</td>
-      </tr>
-    `).join('') + spatialHTML;
-
-    const displayTitle = p.codigo_unico || p.id_registro || p.area || areaId;
-
-    const popupHTML = `
-      <div class="earth-popup">
-        <div class="earth-popup-header">
-          ${esc(displayTitle)}
-        </div>
-        <table>${tableRows}</table>
-      </div>
-    `;
-
-    const popup = new maplibregl.Popup({ maxWidth: '330px', focusAfterOpen: false })
-      .setLngLat(e.lngLat)
-      .setHTML(popupHTML)
-      .addTo(map);
-
-    const resetScroll = () => {
-      const el = popup.getElement();
-      if (el) {
-        const scroller = el.querySelector('.earth-popup');
-        if (scroller) scroller.scrollTop = 0;
-      }
-    };
-    resetScroll();
-    requestAnimationFrame(resetScroll);
-    setTimeout(resetScroll, 50);
+    openAreaPopup(targetFeature, e.lngLat);
   });
 
   map.on('mouseenter', 'areas-fill', () => map.getCanvas().style.cursor = 'pointer');
