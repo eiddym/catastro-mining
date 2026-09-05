@@ -48,6 +48,7 @@ services:
       - "8081:80"
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks: [catastro_net]
 
   pgbackups:
